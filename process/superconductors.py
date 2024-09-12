@@ -441,7 +441,10 @@ def hijc_rebco(thelium, bmax, strain, bc20max, t_c0):
 
     # Critical Field (T)
     # B_crit(T) calculated using temperature and critical temperature
-    bcrit = bc20max * (1.0 - thelium / t_c0) ** a
+    what = 1.0 - thelium / t_c0
+    if what < 1e-6:
+        what = 1e-6
+    bcrit = bc20max * what**a
 
     # Critical temperature (K)
     # scaled to match behaviour in GL_REBCO routine,
@@ -458,13 +461,9 @@ def hijc_rebco(thelium, bmax, strain, bc20max, t_c0):
     # giving a negative but real value of jcrit.
 
     if bcrit > bmax:
-        jcrit = (
-            (A_t / bmax) * bcrit**b * (bmax / bcrit) ** p * (1 - bmax / bcrit) ** q
-        )
+        jcrit = (A_t / bmax) * bcrit**b * (bmax / bcrit) ** p * (1 - bmax / bcrit) ** q
     else:
-        jcrit = (
-            (A_t / bmax) * bcrit**b * (bmax / bcrit) ** p * (bmax / bcrit - 1) ** q
-        )
+        jcrit = (A_t / bmax) * bcrit**b * (bmax / bcrit) ** p * (bmax / bcrit - 1) ** q
 
     # print("thelium = ", thelium, "   bcrit = ", bcrit, "   bmax = ", bmax, "   1 - bmax / bcrit = ", 1 - bmax / bcrit)
 
@@ -539,9 +538,7 @@ def Bottura_scaling(
 
     # Strain function
     # 0.83 < s < 1.0, for -0.005 < strain < 0.005
-    strfun = np.sqrt(epssh**2 + eps0a**2) - np.sqrt(
-        (strain - epssh) ** 2 + eps0a**2
-    )
+    strfun = np.sqrt(epssh**2 + eps0a**2) - np.sqrt((strain - epssh) ** 2 + eps0a**2)
     strfun = strfun * ca1 - ca2 * strain
     strfun = 1.0 + (1 / (1.0 - ca1 * eps0a)) * strfun
 
