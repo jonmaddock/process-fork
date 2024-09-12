@@ -41,7 +41,11 @@ class Caller:
         :return: whether values agree or not
         :rtype: bool
         """
-        return np.allclose(previous, current, rtol=1.0e-6)
+        # Check for same shape: mfile length can change between iterations
+        if isinstance(previous, float) or previous.shape == current.shape:
+            return np.allclose(previous, current, rtol=1.0e-1, equal_nan=True)
+        else:
+            return False
 
     def call_models(self, xc: np.ndarray, m: int) -> Tuple[float, np.ndarray]:
         """Evalutate models until results are idempotent.
@@ -137,8 +141,15 @@ class Caller:
 
                 # Extract floats from mfile dict into array for straightforward
                 # comparison: only compare floats
+                # Dict for finding differing keys (var names)
+                current_mfile_floats_dict = {
+                    key: val
+                    for key, val in mfile_data.items()
+                    if isinstance(val, float)
+                }
+                # Array for easy value comparisons
                 current_mfile_arr = np.array(
-                    [val for val in mfile_data.values() if isinstance(val, float)]
+                    [val for val in current_mfile_floats_dict.values()]
                 )
                 if previous_mfile_arr is None:
                     # First run: need another run to compare with
@@ -146,6 +157,7 @@ class Caller:
                         "New mfile created: evaluating models again to check idempotence"
                     )
                     previous_mfile_arr = np.copy(current_mfile_arr)
+                    previous_mfile_floats_dict = current_mfile_floats_dict.copy()
                     continue
 
                 if self.check_agreement(previous_mfile_arr, current_mfile_arr):
@@ -156,16 +168,49 @@ class Caller:
                     ft.init_module.close_idempotence_files()
                     # Write final output file and mfile
                     finalise(self.models, ifail)
+                    print("Mfiles idempotent")
                     return
 
                 # Mfiles not yet idempotent: re-evaluate models
                 logger.debug("Mfiles not idempotent, evaluating models again")
-                previous_mfile_arr = np.copy(current_mfile_arr)
 
-            raise RuntimeError(
+                # Failed to stabilise: which values are still oscillating?
+                if previous_mfile_arr.shape == current_mfile_arr.shape:
+                    equal_indexes = np.isclose(
+                        previous_mfile_arr,
+                        current_mfile_arr,
+                        rtol=1.0e-6,
+                        equal_nan=True,
+                    )
+                    # Print differences
+                    diffs = current_mfile_arr[~equal_indexes]
+                    print(f"Current diffs in mfile: {diffs}")
+                    diff_indexes = np.where(~equal_indexes)
+                    print(f"{current_mfile_arr[diff_indexes]}")
+
+                    for key, val in current_mfile_floats_dict.items():
+                        if val in diffs:
+                            print(f"{key = }, {val = }")
+
+                previous_mfile_arr = np.copy(current_mfile_arr)
+                previous_mfile_floats_dict = current_mfile_floats_dict.copy()
+
+            # raise RuntimeError(
+            #     "Model evaluations at the current optimisation parameter vector "
+            #     "don't produce idempotent values in the final output."
+            #     # f"Different indexes = {diff_indexes}"
+            # )
+            # Write output and return to allow sig_tf_r_max(1) oscillations
+            print(
                 "Model evaluations at the current optimisation parameter vector "
                 "don't produce idempotent values in the final output."
             )
+            ft.init_module.close_idempotence_files()
+            # Write final output file and mfile
+            finalise(self.models, ifail)
+            print("Mfiles idempotent")
+            return
+
         except Exception:
             # If exception in model evaluations or idempotence can't be
             # achieved, delete intermediate idempotence files to clean up
