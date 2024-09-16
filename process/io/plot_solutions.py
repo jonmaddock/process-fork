@@ -33,6 +33,82 @@ NORM_OBJF_NAME = "objf_name"
 TAG_REGEX = r"tag$"
 TAG = "tag"
 
+# List of optimisation param numbers that are f-values
+F_VALUE_OPT_PARAM_NUMBERS = [
+    9,
+    14,
+    15,
+    21,
+    25,
+    26,
+    27,
+    28,
+    30,
+    32,
+    33,
+    34,
+    35,
+    36,
+    38,
+    39,
+    40,
+    45,
+    46,
+    48,
+    49,
+    50,
+    51,
+    53,
+    54,
+    62,
+    63,
+    64,
+    66,
+    67,
+    68,
+    71,
+    72,
+    79,
+    86,
+    89,
+    92,
+    95,
+    96,
+    97,
+    103,
+    104,
+    105,
+    106,
+    107,
+    110,
+    111,
+    112,
+    113,
+    115,
+    116,
+    117,
+    118,
+    123,
+    137,
+    141,
+    143,
+    144,
+    146,
+    147,
+    149,
+    153,
+    154,
+    157,
+    159,
+    160,
+    161,
+    164,
+    165,
+    166,
+    167,
+    168,
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -303,6 +379,18 @@ def _filter_vars_of_interest(
             f"{NORM_OBJF_PATTERN}|{'|'.join(extra_var_names)}".rstrip("|")
         )
     )
+
+    # # Filter out any f-value opt params
+    # f_values = filtered_results.filter(
+    #     regex=(
+    #         r"(?:nitvar|itvar|xcm)0*("
+    #         + "|".join([str(num) for num in F_VALUE_OPT_PARAM_NUMBERS])
+    #         + ")"
+    #     )
+    # )
+    # filtered_results = filtered_results[
+    #     filtered_results.columns.difference(f_values.columns)
+    # ]
 
     return filtered_results
 
