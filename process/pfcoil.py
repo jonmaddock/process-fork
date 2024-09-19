@@ -2213,6 +2213,12 @@ class PFCoil:
                 if not pf.cslimit:
                     eh.report_error(135)
 
+                # Check whether CS coil currents are feasible from engineering POV
+                if ctv.fjohc > 0.7:
+                    eh.report_error(286)
+                if ctv.fjohc0 > 0.7:
+                    eh.report_error(287)
+
                 # REBCO fractures in strains above ~+/- 0.7%
                 if (
                     (pfv.isumatoh == 6 or pfv.isumatoh == 8 or pfv.isumatoh == 9)
@@ -2341,7 +2347,7 @@ class PFCoil:
             op.ovarre(
                 self.mfile,
                 f"PF coil {k} radius (m)",
-                f"(rpf[{k}]",
+                f"(rpf[{k}])",
                 pfv.rpf[k],
             )
             op.ovarre(
