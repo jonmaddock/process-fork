@@ -154,11 +154,11 @@ RADIAL_BUILD = [
 
 vertical_lower = [
     "rminor*kappa",
-    "vgap",
+    "vgap_xpoint_divertor",
     "divfix",
     "shldlth",
     "d_vv_bot",
-    "vgap2",
+    "vgap_vv_thermalshield",
     "thshield_vb",
     "tftsgap",
     "tfcth",
@@ -1153,6 +1153,7 @@ def plot_vacuum_vessel(axis, mfile_data, scan, colour_scheme):
             vvg_single_null.rs,
             vvg_single_null.zs,
             color=VESSEL_COLOUR[colour_scheme - 1],
+            lw=0.01,
         )
 
     if i_single_null == 0:
@@ -1171,6 +1172,7 @@ def plot_vacuum_vessel(axis, mfile_data, scan, colour_scheme):
             vvg_double_null.rs,
             vvg_double_null.zs,
             color=VESSEL_COLOUR[colour_scheme - 1],
+            lw=0.01,
         )
 
 
@@ -1208,7 +1210,7 @@ def plot_shield(axis, mfile_data, scan, colour_scheme):
     ) / 2.0
 
     if i_single_null == 1:
-        sg_single_null = shield_geometry_single_null(
+        shield_geometry = shield_geometry_single_null(
             cumulative_upper=cumulative_upper,
             radx_far=radx_far,
             rminx_far=rminx_far,
@@ -1217,13 +1219,8 @@ def plot_shield(axis, mfile_data, scan, colour_scheme):
             triang=triang_95,
             cumulative_lower=cumulative_lower,
         )
-        axis.plot(sg_single_null.rs, sg_single_null.zs, color="black", lw=thin)
-        axis.fill(
-            sg_single_null.rs, sg_single_null.zs, color=SHIELD_COLOUR[colour_scheme - 1]
-        )
-
-    if i_single_null == 0:
-        sg_double_null = shield_geometry_double_null(
+    else:
+        shield_geometry = shield_geometry_double_null(
             cumulative_lower=cumulative_lower,
             radx_far=radx_far,
             radx_near=radx_near,
@@ -1231,10 +1228,14 @@ def plot_shield(axis, mfile_data, scan, colour_scheme):
             rminx_near=rminx_near,
             triang=triang_95,
         )
-        axis.plot(sg_double_null.rs, sg_double_null.zs, color="black", lw=thin)
-        axis.fill(
-            sg_double_null.rs, sg_double_null.zs, color=SHIELD_COLOUR[colour_scheme - 1]
-        )
+
+    axis.plot(shield_geometry.rs, shield_geometry.zs, color="black", lw=thin)
+    axis.fill(
+        shield_geometry.rs,
+        shield_geometry.zs,
+        color=SHIELD_COLOUR[colour_scheme - 1],
+        lw=0.01,
+    )
 
 
 def plot_blanket(axis, mfile_data, scan, colour_scheme) -> None:
@@ -1307,6 +1308,7 @@ def plot_blanket(axis, mfile_data, scan, colour_scheme) -> None:
             bg_single_null.rs,
             bg_single_null.zs,
             color=BLANKET_COLOUR[colour_scheme - 1],
+            lw=0.01,
         )
 
     if i_single_null == 0:
@@ -1325,6 +1327,7 @@ def plot_blanket(axis, mfile_data, scan, colour_scheme) -> None:
             bg_double_null.rs[0],
             bg_double_null.zs[0],
             color=BLANKET_COLOUR[colour_scheme - 1],
+            lw=0.01,
         )
         if blnkith > 0.0:
             # only plot inboard blanket if inboard blanket thickness > 0
@@ -1335,6 +1338,7 @@ def plot_blanket(axis, mfile_data, scan, colour_scheme) -> None:
                 bg_double_null.rs[1],
                 bg_double_null.zs[1],
                 color=BLANKET_COLOUR[colour_scheme - 1],
+                lw=0.01,
             )
 
 
@@ -1403,6 +1407,7 @@ def plot_firstwall(axis, mfile_data, scan, colour_scheme):
             fwg_single_null.rs,
             fwg_single_null.zs,
             color=FIRSTWALL_COLOUR[colour_scheme - 1],
+            lw=0.01,
         )
 
     if i_single_null == 0:
@@ -1423,11 +1428,13 @@ def plot_firstwall(axis, mfile_data, scan, colour_scheme):
             fwg_double_null.rs[0],
             fwg_double_null.zs[0],
             color=FIRSTWALL_COLOUR[colour_scheme - 1],
+            lw=0.01,
         )
         axis.fill(
             fwg_double_null.rs[1],
             fwg_double_null.zs[1],
             color=FIRSTWALL_COLOUR[colour_scheme - 1],
+            lw=0.01,
         )
 
 
@@ -1467,27 +1474,64 @@ def plot_tf_coils(axis, mfile_data, scan, colour_scheme):
     y4 = mfile_data.data["yarc(4)"].get_scan(scan)
     x5 = mfile_data.data["xarc(5)"].get_scan(scan)
     y5 = mfile_data.data["yarc(5)"].get_scan(scan)
+    thshield_ib = mfile_data.data["thshield_ib"].get_scan(scan)
+    thshield_ob = mfile_data.data["thshield_ob"].get_scan(scan)
+    tftsgap = mfile_data.data["tftsgap"].get_scan(scan)
     if y3 != 0:
         print("TF coil geometry: The value of yarc(3) is not zero, but should be.")
 
-    # Check for TF coil shape
-    if "i_tf_shape" in mfile_data.data.keys():
-        i_tf_shape = int(mfile_data.data["i_tf_shape"].get_scan(scan))
-    else:
-        i_tf_shape = int(1)
-
-    if i_tf_shape == 2:
-        rects = tfcoil_geometry_rectangular_shape(
-            x1=x1,
-            x2=x2,
-            x4=x4,
-            x5=x5,
-            y1=y1,
-            y2=y2,
-            y4=y4,
-            y5=y5,
-            tfcth=tfcth,
+    if thshield_ib != thshield_ob:
+        print(
+            "thshield_ib and thshield_ob are different. Using thshield_ib"
+            "for the poloidal plot of the thermal shield."
         )
+
+    for offset, colour in (
+        (thshield_ib + tftsgap, THERMAL_SHIELD_COLOUR[colour_scheme - 1]),
+        (tftsgap, "white"),
+        (0.0, TFC_COLOUR[colour_scheme - 1]),
+    ):
+        # Check for TF coil shape
+        if "i_tf_shape" in mfile_data.data.keys():
+            i_tf_shape = int(mfile_data.data["i_tf_shape"].get_scan(scan))
+        else:
+            i_tf_shape = 1
+
+        if i_tf_shape == 2:
+            rects = tfcoil_geometry_rectangular_shape(
+                x1=x1,
+                x2=x2,
+                x4=x4,
+                x5=x5,
+                y1=y1,
+                y2=y2,
+                y4=y4,
+                y5=y5,
+                tfcth=tfcth,
+                offset_in=offset,
+            )
+
+        else:
+            rects, verts = tfcoil_geometry_d_shape(
+                x1=x1,
+                x2=x2,
+                x3=x3,
+                x4=x4,
+                x5=x5,
+                y1=y1,
+                y2=y2,
+                y4=y4,
+                y5=y5,
+                tfcth=tfcth,
+                rtangle=rtangle,
+                rtangle2=rtangle2,
+                offset_in=offset,
+            )
+
+            for vert in verts:
+                path = Path(vert, closed=True)
+                patch = patches.PathPatch(path, facecolor=colour, lw=0)
+                axis.add_patch(patch)
 
         for rec in rects:
             axis.add_patch(
@@ -1495,40 +1539,7 @@ def plot_tf_coils(axis, mfile_data, scan, colour_scheme):
                     xy=(rec.anchor_x, rec.anchor_z),
                     width=rec.width,
                     height=rec.height,
-                    facecolor=TFC_COLOUR[colour_scheme - 1],
-                )
-            )
-
-    else:
-        rects, verts = tfcoil_geometry_d_shape(
-            x1=x1,
-            x2=x2,
-            x3=x3,
-            x4=x4,
-            x5=x5,
-            y1=y1,
-            y2=y2,
-            y4=y4,
-            y5=y5,
-            tfcth=tfcth,
-            rtangle=rtangle,
-            rtangle2=rtangle2,
-        )
-
-        for vert in verts:
-            path = Path(vert, closed=True)
-            patch = patches.PathPatch(
-                path, facecolor=TFC_COLOUR[colour_scheme - 1], lw=0
-            )
-            axis.add_patch(patch)
-
-        for rec in rects:
-            axis.add_patch(
-                patches.Rectangle(
-                    xy=(rec.anchor_x, rec.anchor_z),
-                    width=rec.width,
-                    height=rec.height,
-                    facecolor=TFC_COLOUR[colour_scheme - 1],
+                    facecolor=colour,
                 )
             )
 
@@ -2393,7 +2404,7 @@ def plot_physics_info(axis, mfile_data, scan):
     data = [
         ("powfmw", "Fusion power", "MW"),
         ("bigq", "$Q_{p}$", ""),
-        ("plascur/1d6", "$I_p$", "MA"),
+        ("plasma_current_MA", "$I_p$", "MA"),
         ("bt", "Vacuum $B_T$ at $R_0$", "T"),
         ("q95", r"$q_{\mathrm{95}}$", ""),
         ("normalised_thermal_beta", r"$\beta_N$, thermal", "% m T MA$^{-1}$"),
@@ -2735,9 +2746,9 @@ def plot_current_drive_info(axis, mfile_data, scan):
         data = [
             (pinjie, "Steady state auxiliary power", "MW"),
             ("pheat", "Power for heating only", "MW"),
-            ("bootipf", "Bootstrap fraction", ""),
-            ("faccd", "Auxiliary fraction", ""),
-            ("facoh", "Inductive fraction", ""),
+            ("bootstrap_current_fraction", "Bootstrap fraction", ""),
+            ("aux_current_fraction", "Auxiliary fraction", ""),
+            ("inductive_current_fraction", "Inductive fraction", ""),
             ("powerht", "Plasma heating used for H factor", "MW"),
             (
                 "effcd",
@@ -2765,9 +2776,9 @@ def plot_current_drive_info(axis, mfile_data, scan):
         data = [
             (pinjie, "Steady state auxiliary power", "MW"),
             ("pheat", "Power for heating only", "MW"),
-            ("bootipf", "Bootstrap fraction", ""),
-            ("faccd", "Auxiliary fraction", ""),
-            ("facoh", "Inductive fraction", ""),
+            ("bootstrap_current_fraction", "Bootstrap fraction", ""),
+            ("aux_current_fraction", "Auxiliary fraction", ""),
+            ("inductive_current_fraction", "Inductive fraction", ""),
             ("gamnb", "NB gamma", "$10^{20}$ A W$^{-1}$ m$^{-2}$"),
             ("enbeam", "NB energy", "keV"),
             ("powerht", "Plasma heating used for H factor", "MW"),
@@ -2791,9 +2802,9 @@ def plot_current_drive_info(axis, mfile_data, scan):
         data = [
             (pinjie, "Steady state auxiliary power", "MW"),
             ("pheat", "Power for heating only", "MW"),
-            ("bootipf", "Bootstrap fraction", ""),
-            ("faccd", "Auxiliary fraction", ""),
-            ("facoh", "Inductive fraction", ""),
+            ("bootstrap_current_fraction", "Bootstrap fraction", ""),
+            ("aux_current_fraction", "Auxiliary fraction", ""),
+            ("inductive_current_fraction", "Inductive fraction", ""),
             ("powerht", "Plasma heating used for H factor", "MW"),
             (
                 "gamcd",
@@ -2820,9 +2831,9 @@ def plot_current_drive_info(axis, mfile_data, scan):
         data = [
             (pinjie, "Steady state auxiliary power", "MW"),
             ("pheat", "Power for heating only", "MW"),
-            ("bootipf", "Bootstrap fraction", ""),
-            ("faccd", "Auxiliary fraction", ""),
-            ("facoh", "Inductive fraction", ""),
+            ("bootstrap_current_fraction", "Bootstrap fraction", ""),
+            ("aux_current_fraction", "Auxiliary fraction", ""),
+            ("inductive_current_fraction", "Inductive fraction", ""),
             ("powerht", "Plasma heating used for H factor", "MW"),
             (
                 "gamcd",
@@ -2849,9 +2860,9 @@ def plot_current_drive_info(axis, mfile_data, scan):
         data = [
             (pinjie, "Steady state auxiliary power", "MW"),
             ("pheat", "Power for heating only", "MW"),
-            ("bootipf", "Bootstrap fraction", ""),
-            ("faccd", "Auxiliary fraction", ""),
-            ("facoh", "Inductive fraction", ""),
+            ("bootstrap_current_fraction", "Bootstrap fraction", ""),
+            ("aux_current_fraction", "Auxiliary fraction", ""),
+            ("inductive_current_fraction", "Inductive fraction", ""),
             ("powerht", "Plasma heating used for H factor", "MW"),
             (
                 "gamcd",
@@ -3174,7 +3185,7 @@ def main(args=None):
             "divfix",
             "shldtth",
             "d_vv_top",
-            "vgap2",
+            "vgap_vv_thermalshield",
             "thshield_vb",
             "tftsgap",
             "tfcth",
@@ -3188,7 +3199,7 @@ def main(args=None):
             "vvblgap",
             "shldtth",
             "d_vv_top",
-            "vgap2",
+            "vgap_vv_thermalshield",
             "thshield_vb",
             "tftsgap",
             "tfcth",

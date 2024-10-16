@@ -242,7 +242,7 @@ subroutine check
     ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     use build_variables, only: blnkith, bore, gapoh, ohcth, precomp, iprecomp, &
-        i_r_cp_top, r_cp_top, vgaptop, vgap, shldtth, shldlth, d_vv_top, d_vv_bot, tf_in_cs
+        i_r_cp_top, r_cp_top, vgaptop, vgap_xpoint_divertor, shldtth, shldlth, d_vv_top, d_vv_bot, tf_in_cs
     use buildings_variables, only: esbldgm3, triv
     use current_drive_variables, only: gamcd, iefrf, irfcd
     use error_handling, only: errors_on, idiags, fdiags, report_error
@@ -256,9 +256,9 @@ subroutine check
         boundu
     use pfcoil_variables, only: ipfres, ngrp, pfclres, ipfloc, ncls, isumatoh
     use physics_variables, only: aspect, fdeut, fgwped, fhe3, &
-        fgwsep, ftrit, ibss, i_single_null, icurr, idivrt, ishape, &
+        fgwsep, ftrit, i_bootstrap_current, i_single_null, i_plasma_current, idivrt, ishape, &
         iradloss, isc, ipedestal, ilhthresh, itart, nesep, rhopedn, rhopedt, &
-        rnbeam, neped, te, tauee_in, tesep, teped, itartpf, ftar, idia
+        rnbeam, neped, te, tauee_in, tesep, teped, itartpf, ftar, i_diamagnetic_current
     use pulse_variables, only: lpulse
     use reinke_variables, only: fzactual, impvardiv
     use tfcoil_variables, only: casthi, casthi_is_fraction, casths, i_tf_sup, &
@@ -489,7 +489,7 @@ subroutine check
 
      if (i_single_null == 0) then
          idivrt = 2
-         vgaptop = vgap
+         vgaptop = vgap_xpoint_divertor
          shldtth = shldlth
          d_vv_top = d_vv_bot
          call report_error(272)
@@ -510,8 +510,8 @@ subroutine check
         ! Check if the choice of plasma current is addapted for ST
         ! 2 : Peng Ip scaling (See STAR code documentation)
         ! 9 : Fiesta Ip scaling
-        if (icurr /= 2 .and. icurr /= 9) then
-            idiags(1) = icurr ; call report_error(37)
+        if (i_plasma_current /= 2 .and. i_plasma_current /= 9) then
+            idiags(1) = i_plasma_current ; call report_error(37)
         end if
 
         !! If using Peng and Strickler (1986) model (itartpf == 0)
@@ -560,7 +560,7 @@ subroutine check
         end if
 
         ! Check if the boostrap current selection is addapted to ST
-        if (ibss  == 1) call report_error(38)
+        if (i_bootstrap_current  == 1) call report_error(38)
 
         ! Check if a single null divertor is used in double null machine
         if (i_single_null == 0 .and. (ftar == 1.0 .or. ftar == 0.0)) then
@@ -599,7 +599,7 @@ subroutine check
     ! ------------------------------------
     else
 
-        if (icurr == 2 .or. icurr == 9) call report_error(40)
+        if (i_plasma_current == 2 .or. i_plasma_current == 9) call report_error(40)
 
         ! Set the TF coil shape to PROCESS D-shape (if default value)
         if ( i_tf_shape == 0 ) i_tf_shape = 1
@@ -828,7 +828,7 @@ subroutine check
         call report_error(283)
     end if
 
-    if ( ibss == 5  .and. idia /= 0 ) then
+    if ( i_bootstrap_current == 5  .and. i_diamagnetic_current /= 0 ) then
         call report_error(284)
     end if
 
@@ -947,7 +947,7 @@ subroutine check
         call report_error(221)
      end if
 
-    if (icurr.eq.2.and.isc.eq.42) then
+    if (i_plasma_current.eq.2.and.isc.eq.42) then
         call report_error(222)
     end if
 
