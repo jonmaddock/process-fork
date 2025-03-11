@@ -551,9 +551,9 @@ def calculate_current_coefficient_hastie(
     eprime = er * lamp1 / (1.0 + lamda / 3.0)
 
     # Delta primed in AEA FUS 172
-    deltap = (0.5 * kap1 * eps * 0.5 * li) + (beta0 / (0.5 * kap1 * eps)) * lamp1**2 / (
-        1.0 + nu
-    )
+    deltap = (0.5 * kap1 * eps * 0.5 * li) + (
+        beta0 / (0.5 * kap1 * eps)
+    ) * lamp1**2 / (1.0 + nu)
 
     # Delta/R0 in AEA FUS 172
     deltar = beta0 / 6.0 * (1.0 + 5.0 * lamda / 6.0 + 0.25 * lamda**2) + (
@@ -2240,9 +2240,12 @@ class Physics:
             - physics_variables.p_plasma_rad_mw
         )
 
-        # The following line is unphysical, but prevents -ve sqrt argument
-        # Should be obsolete if constraint eqn 17 is turned on
-        physics_variables.pdivt = max(0.001e0, physics_variables.pdivt)
+        # KLUDGE: Ensure pdivt is continuously positive (physical, rather than
+        # negative potential power), as required by other models (e.g.
+        # Physics.calculate_density_limit())
+        physics_variables.pdivt = physics_variables.pdivt / (
+            1 - np.exp(-physics_variables.pdivt)
+        )
 
         # if double null configuration share the power
         # over the upper and lower divertor, where physics_variables.ftar gives
@@ -6037,37 +6040,41 @@ class Physics:
         # Square root of current profile index term
         saj = np.sqrt(aj)
 
-        a = np.array([
-            1.41 * (1.0 - 0.28 * saj) * (1.0 + 0.12 / z),
-            0.36 * (1.0 - 0.59 * saj) * (1.0 + 0.8 / z),
-            -0.27 * (1.0 - 0.47 * saj) * (1.0 + 3.0 / z),
-            0.0053 * (1.0 + 5.0 / z),
-            -0.93 * (1.0 - 0.34 * saj) * (1.0 + 0.15 / z),
-            -0.26 * (1.0 - 0.57 * saj) * (1.0 - 0.27 * z),
-            0.064 * (1.0 - 0.6 * aj + 0.15 * aj * aj) * (1.0 + 7.6 / z),
-            -0.0011 * (1.0 + 9.0 / z),
-            -0.33 * (1.0 - aj + 0.33 * aj * aj),
-            -0.26 * (1.0 - 0.87 / saj - 0.16 * aj),
-            -0.14 * (1.0 - 1.14 / saj - 0.45 * saj),
-            -0.0069,
-        ])
+        a = np.array(
+            [
+                1.41 * (1.0 - 0.28 * saj) * (1.0 + 0.12 / z),
+                0.36 * (1.0 - 0.59 * saj) * (1.0 + 0.8 / z),
+                -0.27 * (1.0 - 0.47 * saj) * (1.0 + 3.0 / z),
+                0.0053 * (1.0 + 5.0 / z),
+                -0.93 * (1.0 - 0.34 * saj) * (1.0 + 0.15 / z),
+                -0.26 * (1.0 - 0.57 * saj) * (1.0 - 0.27 * z),
+                0.064 * (1.0 - 0.6 * aj + 0.15 * aj * aj) * (1.0 + 7.6 / z),
+                -0.0011 * (1.0 + 9.0 / z),
+                -0.33 * (1.0 - aj + 0.33 * aj * aj),
+                -0.26 * (1.0 - 0.87 / saj - 0.16 * aj),
+                -0.14 * (1.0 - 1.14 / saj - 0.45 * saj),
+                -0.0069,
+            ]
+        )
 
         seps1 = np.sqrt(eps1)
 
-        b = np.array([
-            1.0,
-            alfpnw,
-            alftnw,
-            alfpnw * alftnw,
-            seps1,
-            alfpnw * seps1,
-            alftnw * seps1,
-            alfpnw * alftnw * seps1,
-            eps1,
-            alfpnw * eps1,
-            alftnw * eps1,
-            alfpnw * alftnw * eps1,
-        ])
+        b = np.array(
+            [
+                1.0,
+                alfpnw,
+                alftnw,
+                alfpnw * alftnw,
+                seps1,
+                alfpnw * seps1,
+                alftnw * seps1,
+                alfpnw * alftnw * seps1,
+                eps1,
+                alfpnw * eps1,
+                alftnw * eps1,
+                alfpnw * alftnw * eps1,
+            ]
+        )
 
         # Empirical bootstrap current fraction
         return seps1 * betpth * (a * b).sum()
