@@ -119,6 +119,8 @@ from process.models.tfcoil.superconducting import (
 )
 from process.models.vacuum import Vacuum, VacuumVessel
 from process.models.water_use import WaterUse
+from process.caller import write_output_files
+from process.iteration_variables import load_iteration_variables
 
 PACKAGE_LOGGING = True
 """Can be set False to disable package-level logging, e.g. in the test suite"""
@@ -449,11 +451,19 @@ class SingleRun:
         # i_process_run_mode == 1: optimisation
         if self.data.numerics.i_process_run_mode == PROCESSRunMode.OPTIMISATION:
             pass
+        # i_process_run_mode == -1: solution
+        elif self.data.numerics.i_process_run_mode == PROCESSRunMode.SOLUTION:
+            # Solve equality (consistency) constraints only using fsolve (HYBRD)
+            self.solver = "fsolve"
         # i_process_run_mode == -2: evaluation
         elif self.data.numerics.i_process_run_mode == PROCESSRunMode.EVALUATION:
-            # No optimisation:
-            # solve equality (consistency) constraints only using fsolve (HYBRD)
-            self.solver = "fsolve"
+            # Evalutation only: compute the output variables now
+            # Get optimisation parameters x, evaluate models
+            load_iteration_variables()
+            self.ifail = 6
+            write_output_files(models=self.models, ifail=self.ifail)
+            self.show_errors()
+            return
         else:
             raise ValueError(
                 f"Invalid i_process_run_mode value: "
