@@ -28,7 +28,7 @@ def finalise(models, ifail: int, non_idempotent_msg: None | str = None):
         po.oheadr(constants.NOUT, "Final UNFEASIBLE Point")
 
     # Output relevant to no optimisation
-    if numerics.ioptimz == -2:
+    if numerics.ioptimz in [-2, -1]:
         output_evaluation()
 
     # Print non-idempotence warning to OUT.DAT only

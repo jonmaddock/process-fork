@@ -108,6 +108,8 @@ from process.superconducting_tf_coil import SuperconductingTFCoil
 from process.tf_coil import TFCoil
 from process.vacuum import Vacuum
 from process.water_use import WaterUse
+from process.caller import write_output_files
+from process.iteration_variables import load_iteration_variables
 
 os.environ["PYTHON_PROCESS_ROOT"] = os.path.join(os.path.dirname(__file__))
 
@@ -459,13 +461,20 @@ class SingleRun:
     def run_scan(self):
         """Create scan object if required."""
         # TODO Move this solver logic up to init?
-        # ioptimz == 1: optimisation
         if data_structure.numerics.ioptimz == 1:
+            # Optimisation
             pass
-        # ioptimz == -2: evaluation
-        elif data_structure.numerics.ioptimz == -2:
-            # No optimisation: solve equality (consistency) constraints only using fsolve (HYBRD)
+        elif data_structure.numerics.ioptimz == -1:
+            # Solve equality (consistency) constraints only using fsolve (HYBRD)
             self.solver = "fsolve"
+        elif data_structure.numerics.ioptimz == -2:
+            # Evalutation only: compute the output variables now
+            # Get optimisation parameters x, evaluate models
+            load_iteration_variables()
+            self.ifail = 6
+            write_output_files(models=self.models, ifail=self.ifail)
+            self.show_errors()
+            return
         else:
             raise ValueError(
                 f"Invalid ioptimz value: {data_structure.numerics.ioptimz}. Please "
