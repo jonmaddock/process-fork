@@ -395,7 +395,13 @@ def _filter_vars_of_interest(
 
     if constraints:
         # Filter in tag, equality and inequality constraint values only
-        return results_df.filter(regex=(TAG_REGEX + r"|" + CON_VALUE_PATTERN))
+        return results_df.filter(
+            regex=(
+                f"{TAG_REGEX}|{CON_VALUE_PATTERN}|{'|'.join(extra_var_names)}".rstrip(
+                    "|"
+                )
+            )
+        )
 
     # Filter for optimisation parameters (normalised to initial value
     # e.g. xcm001) values and names, objective function value and name, plus
@@ -745,7 +751,9 @@ def _plot_solutions_constraints(df: pd.DataFrame, title: str) -> mpl.figure.Figu
 
 
 def plot_mfile_solutions_constraints(
-    runs_metadata: Sequence[RunMetadata], title: str
+    runs_metadata: Sequence[RunMetadata],
+    title: str,
+    extra_var_names: list[str] | None = None,
 ) -> tuple[mpl.figure.Figure, pd.DataFrame]:
     """Plot constraint values in mfiles.
 
@@ -765,7 +773,9 @@ def plot_mfile_solutions_constraints(
     results_df = _create_df_from_run_metadata(runs_metadata)
 
     # Filter for tag and constraint values
-    filtered_results_df = _filter_vars_of_interest(results_df, constraints=True)
+    filtered_results_df = _filter_vars_of_interest(
+        results_df, constraints=True, extra_var_names=extra_var_names
+    )
 
     fig = _plot_solutions_constraints(df=filtered_results_df, title=title)
     return fig, filtered_results_df
