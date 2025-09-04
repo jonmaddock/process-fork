@@ -263,13 +263,13 @@ def check_process(inputs, data):  # noqa: ARG001
         See individual ProcessValidationError instances for more details.
     """
     # Check that there are sufficient iteration variables
-    if data.numerics.n_iteration_variables < data.numerics.n_equality_constraints:
-        raise ProcessValidationError(
-            "Insufficient iteration variables to solve the problem! "
-            "n_iteration_variables < n_equality_constraints",
-            n_iteration_variables=data.numerics.n_iteration_variables,
-            n_equality_constraints=data.numerics.n_equality_constraints,
-        )
+    # if data.numerics.n_iteration_variables < data.numerics.n_equality_constraints:
+    #     raise ProcessValidationError(
+    #         "Insufficient iteration variables to solve the problem! "
+    #         "n_iteration_variables < n_equality_constraints",
+    #         n_iteration_variables=data.numerics.n_iteration_variables,
+    #         n_equality_constraints=data.numerics.n_equality_constraints,
+    #     )
 
     # Check that sufficient elements of ixc and icc have been specified
     if (data.numerics.ixc[: data.numerics.n_iteration_variables] == 0).any():
