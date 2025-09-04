@@ -459,6 +459,9 @@ class Physics(Model):
             + self.data.physics.e_plasma_ions_thermal
         )
 
+        # Move beta FPP here? Possibly has dependencies outside of physics
+        # Run over all models for now
+
         # =======================================================
 
         # Set PF coil ramp times
