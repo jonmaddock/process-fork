@@ -1020,9 +1020,17 @@ class PlasmaConfinementTime(Model):
 
         # For comparison directly calculate the confinement time from the stored energy
         # calculated from the total plasma beta and the loss power used above.
+        # p_trans = p_plasma_loss_mw
+        # p_rad = pden_plasma_core_rad_mw * vol_plasma
+        # p_heat = p_plasma_loss_mw + p_rad
         self.data.physics.t_energy_confinement_beta = (
             self.data.physics.e_plasma_beta / 1e6
         ) / p_plasma_loss_mw
+
+        # # Alternative tau_E
+        # physics_module.t_energy_confinement_beta = (
+        #     physics_variables.e_plasma_beta_thermal / 1e6
+        # ) / (p_trans + p_rad)
 
         return ConfinementTimeData(
             pden_electron_transport_loss_mw=pden_electron_transport_loss_mw,
