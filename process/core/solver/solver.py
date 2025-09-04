@@ -322,6 +322,8 @@ class FSolve(_Solver):
         # Evaluate equality constraints only
         _, conf = self.evaluators.fcnvmc1(x.shape[0], self.meq, x, 0)
 
+        # Required for including 2 iter vars in output, but only solving for the first one!
+        # return conf[0]
         return conf
 
     def solve(self) -> int:

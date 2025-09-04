@@ -239,13 +239,13 @@ def check_process(inputs, data):  # noqa: ARG001
     This routine performs a sanity check of the input variables
     and ensures other dependent variables are given suitable values.
     """
-    # Check that there are sufficient iteration variables
-    if data.numerics.nvar < data.numerics.neqns:
-        raise ProcessValidationError(
-            "Insufficient iteration variables to solve the problem! NVAR < NEQNS",
-            nvar=data.numerics.nvar,
-            neqns=data.numerics.neqns,
-        )
+    # # Check that there are sufficient iteration variables
+    # if data.numerics.nvar < data.numerics.neqns:
+    #     raise ProcessValidationError(
+    #         "Insufficient iteration variables to solve the problem! NVAR < NEQNS",
+    #         nvar=data.numerics.nvar,
+    #         neqns=data.numerics.neqns,
+    #     )
 
     # Check that sufficient elements of ixc and icc have been specified
     if (data.numerics.ixc[: data.numerics.nvar] == 0).any():
