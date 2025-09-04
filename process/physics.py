@@ -1892,6 +1892,9 @@ class Physics:
             * physics_variables.vol_plasma
         )
 
+        # Move beta FPP here? Possibly has dependencies outside of physics
+        # Run over all models for now
+
         # =======================================================
 
         # Set PF coil ramp times
