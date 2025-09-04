@@ -4731,13 +4731,14 @@ class Physics:
                 physics_variables.beta_norm_max_menard,
                 "OP ",
             )
-            po.ovarrf(
-                self.outfile,
-                "E. Thloreus normalised beta upper limit",
-                "(beta_norm_max_thloreus) ",
-                physics_variables.beta_norm_max_thloreus,
-                "OP ",
-            )
+            # Don't exist in physics_variables! Throws exception
+            # po.ovarrf(
+            #     self.outfile,
+            #     "E. Thloreus normalised beta upper limit",
+            #     "(beta_norm_max_thloreus) ",
+            #     physics_variables.beta_norm_max_thloreus,
+            #     "OP ",
+            # )
             po.ovarrf(
                 self.outfile,
                 "R. Stambaugh normalised beta upper limit",
@@ -6588,20 +6589,20 @@ class Physics:
                 current_drive_variables.f_c_plasma_bootstrap_wong,
                 "OP ",
             )
-            po.ovarrf(
-                self.outfile,
-                "Bootstrap fraction (Gi I)",
-                "(bscf_gi_i)",
-                current_drive_variables.bscf_gi_i,
-                "OP ",
-            )
-            po.ovarrf(
-                self.outfile,
-                "Bootstrap fraction (Gi II)",
-                "(bscf_gi_ii)",
-                current_drive_variables.bscf_gi_ii,
-                "OP ",
-            )
+            # po.ovarrf(
+            #     self.outfile,
+            #     "Bootstrap fraction (Gi I)",
+            #     "(bscf_gi_i)",
+            #     current_drive_variables.bscf_gi_i,
+            #     "OP ",
+            # )
+            # po.ovarrf(
+            #     self.outfile,
+            #     "Bootstrap fraction (Gi II)",
+            #     "(bscf_gi_ii)",
+            #     current_drive_variables.bscf_gi_ii,
+            #     "OP ",
+            # )
             po.ovarrf(
                 self.outfile,
                 "Bootstrap fraction (Sugiyama L-mode)",
