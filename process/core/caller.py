@@ -20,6 +20,18 @@ from process.data_structure.numerics import PROCESSRunMode
 from process.models.tfcoil.base import TFConductorModel
 from process.models.tfcoil.superconducting import SuperconductingTFTurnType
 
+# import process.constraints as constraints
+# from process import data_structure
+# from process.final import finalise
+# from process.io.mfile import MFile
+# from process.iteration_variables import set_scaled_iteration_variable
+# from process.objectives import objective_function
+# from process.process_output import OutputFileManager
+from scipy.optimize import fixed_point
+from process.data_structure import physics_variables as pv
+# from process.fortran import constants
+# import pandas as pd
+
 if TYPE_CHECKING:
     from process.core.model import DataStructure
     from process.main import Models
@@ -93,44 +105,79 @@ class Caller:
             if values are non-idempotent after successive
             evaluations
         """
-        objf_prev = None
-        conf_prev = None
+        # objf_prev = None
+        # conf_prev = None
 
-        # Evaluate models up to 10 times; any more implies non-converging values
-        for _ in range(10):
+        # # Evaluate models up to 10 times; any more implies non-converging values
+        # for _ in range(10):
+        #     self._call_models_once(xc)
+        #     # Evaluate objective function and constraints
+        #     objf = objective_function(ft.numerics.minmax)
+        #     conf, _, _, _, _ = ft.constraints.constraint_eqns(m, -1)
+
+        #     if objf_prev is None and conf_prev is None:
+        #         # First run: run again to check idempotence
+        #         logger.debug("New optimisation parameter vector being evaluated")
+        #         objf_prev = objf
+        #         conf_prev = conf
+        #         continue
+
+        #     # Check for idempotence
+        #     if self.check_agreement(objf_prev, objf) and self.check_agreement(
+        #         conf_prev, conf
+        #     ):
+        #         # Idempotent: no longer changing, so return
+        #         logger.debug(
+        #             "Model evaluations idempotent, returning objective "
+        #             "function and constraints"
+        #         )
+        #         return objf, conf
+
+        #     # Not idempotent: still changing, so evaluate models again
+        #     logger.debug("Model evaluations not idempotent: evaluating again")
+        #     objf_prev = objf
+        #     conf_prev = conf
+
+        # raise RuntimeError(
+        #     "After 10 model evaluations at the current optimisation parameter "
+        #     "vector, values for the objective function and constraints haven't "
+        #     "converged (don't produce idempotent values)."
+        # )
+
+        #####################
+        def calc_beta(beta):
+            self.data.physics.beta_total_vol_avg = beta
+            # Pass xc: required to scale iteration vars correctly
             self._call_models_once(xc)
-            # Evaluate objective function and constraints
-            objf = objective_function(self.data.numerics.i_figure_merit, self.data)
-            conf, _, _, _, _ = constraints.constraint_eqns(m, -1, self.data)
-
-            if objf_prev is None and conf_prev is None:
-                # First run: run again to check idempotence
-                logger.debug("New optimisation parameter vector being evaluated")
-                objf_prev = objf
-                conf_prev = conf
-                continue
-
-            # Check for idempotence
-            if self.check_agreement(objf_prev, objf) and self.check_agreement(
-                conf_prev, conf
-            ):
-                # Idempotent: no longer changing, so return
-                logger.debug(
-                    "Model evaluations idempotent, returning objective "
-                    "function and constraints"
+            beta_calc = (
+                self.data.physics.beta_fast_alpha
+                + self.data.physics.beta_beam
+                + 2.0e3
+                * constants.RMU0
+                * constants.ELECTRON_CHARGE
+                * (
+                    (
+                        self.data.physics.nd_plasma_electrons_vol_avg
+                        * self.data.physics.temp_plasma_electron_density_weighted_kev
+                    )
+                    + (
+                        self.data.physics.nd_plasma_ions_total_vol_avg
+                        * self.data.physics.temp_plasma_ion_density_weighted_kev
+                    )
                 )
-                return objf, conf
+                / self.data.physics.b_plasma_total**2
+            )
+            return beta_calc
 
-            # Not idempotent: still changing, so evaluate models again
-            logger.debug("Model evaluations not idempotent: evaluating again")
-            objf_prev = objf
-            conf_prev = conf
+        # Not sure copy is necessary
+        beta_0 = self.data.physics.beta_total_vol_avg
+        self.data.physics.beta_total_vol_avg = fixed_point(calc_beta, beta_0)
 
-        raise RuntimeError(
-            "After 10 model evaluations at the current optimisation parameter "
-            "vector, values for the objective function and constraints haven't "
-            "converged (don't produce idempotent values)."
-        )
+        # Now idempotent, return
+        # Evaluate objective function and constraints
+        objf = objective_function(self.data.numerics.minmax, self.data)
+        conf, _, _, _, _ = constraints.constraint_eqns(m, -1, self.data)
+        return objf, conf
 
     def call_models_and_write_output(self, xc: np.ndarray, ifail: int):
         """Evaluate models until results are idempotent, then write output files.
@@ -153,100 +200,198 @@ class Caller:
             if values are non-idempotent after successive
             evaluations
         """
-        # TODO The only way to ensure idempotence in all outputs is by comparing
-        # mfiles at this stage
-        previous_mfile_data = None
+        # 2 options: run full idempotence, or just run beta
+        # Does this only run in the evaluation case (iopimz = -2)?
 
-        try:  # noqa: PLW0717
-            # Evaluate models up to 10 times; any more implies non-converging values
-            for _ in range(10):
-                # Divert OUT.DAT and MFILE.DAT output to scratch files for
-                # idempotence checking
-                OutputFileManager.open_idempotence_files(self.data.globals.output_prefix)
-                self._call_models_once(xc)
-                # Write mfile
-                finalise(self.models, self.data, ifail)
+        # # TODO The only way to ensure idempotence in all outputs is by comparing
+        # # mfiles at this stage
+        # previous_mfile_data = None
+        # try:  # noqa: PLW0717
+        #             # Evaluate models up to 10 times; any more implies non-converging values
+        #             for _ in range(10):
+        #                 # Divert OUT.DAT and MFILE.DAT output to scratch files for
+        #                 # idempotence checking
+        #                 OutputFileManager.open_idempotence_files(self.data.globals.output_prefix)
+        #                 self._call_models_once(xc)
+        #                 # Write mfile
+        #                 finalise(self.models, self.data, ifail)
 
-                # Extract data from intermediate idempotence-checking mfile
-                mfile_path = (self.data.globals.output_prefix) + "IDEM_MFILE.DAT"
-                mfile = MFile(mfile_path)
-                # Create mfile dict of float values: only compare floats
-                mfile_data = {
-                    var: val
-                    for var in mfile.data
-                    if isinstance(val := mfile.data[var].get_scan(-1), float)
-                }
+        #                 # Extract data from intermediate idempotence-checking mfile
+        #                 mfile_path = (self.data.globals.output_prefix) + "IDEM_MFILE.DAT"
+        #                 mfile = MFile(mfile_path)
+        #                 # Create mfile dict of float values: only compare floats
+        #                 mfile_data = {
+        #                     var: val
+        #                     for var in mfile.data
+        #                     if isinstance(val := mfile.data[var].get_scan(-1), float)
+        #                 }
+        #         if previous_mfile_data is None:
+        #             # First run: need another run to compare with
+        #             logger.debug(
+        #                 "New mfile created: evaluating models again to check idempotence"
+        #             )
+        #             previous_mfile_data = mfile_data.copy()
+        #             continue
 
-                if previous_mfile_data is None:
-                    # First run: need another run to compare with
-                    logger.debug(
-                        "New mfile created: evaluating models again to check idempotence"
-                    )
-                    previous_mfile_data = mfile_data.copy()
-                    continue
+        #         # Compare previous and current mfiles for agreement
+        #         nonconverged_vars = {}
+        #         for var in previous_mfile_data:
+        #             previous_value = previous_mfile_data[var]
+        #             current_value = mfile_data.get(var, np.nan)
+        #             if self.check_agreement(previous_value, current_value):
+        #                 continue
+        #             # Value has changed between previous and current mfiles
+        #             nonconverged_vars[var] = [
+        #                 previous_value,
+        #                 current_value,
+        #             ]
 
-                # Compare previous and current mfiles for agreement
-                nonconverged_vars = {}
-                for var in previous_mfile_data:
-                    previous_value = previous_mfile_data[var]
-                    current_value = mfile_data.get(var, np.nan)
-                    if self.check_agreement(previous_value, current_value):
-                        continue
-                    # Value has changed between previous and current mfiles
-                    nonconverged_vars[var] = [
-                        previous_value,
-                        current_value,
-                    ]
+        # if len(nonconverged_vars) == 0:
+        #     # Previous and current mfiles agree (idempotent)
+        #     logger.debug("Mfiles idempotent, returning")
+        #     # Divert OUT.DAT and MFILE.DAT output back to original files
+        #     # now idempotence checking complete
+        #     OutputFileManager.close_idempotence_files(
+        #         self.data.globals.output_prefix
+        #     )
+        #     # Write final output file and mfile
+        #     finalise(self.models, self.data, ifail)
+        #     return
 
-                if len(nonconverged_vars) == 0:
-                    # Previous and current mfiles agree (idempotent)
-                    logger.debug("Mfiles idempotent, returning")
-                    # Divert OUT.DAT and MFILE.DAT output back to original files
-                    # now idempotence checking complete
-                    OutputFileManager.close_idempotence_files(
-                        self.data.globals.output_prefix
-                    )
-                    # Write final output file and mfile
-                    finalise(self.models, self.data, ifail)
-                    return
+        #         # Mfiles not yet idempotent: need to re-evaluate models
+        #         logger.debug("Mfiles not idempotent, evaluating models again")
+        #         previous_mfile_data = mfile_data.copy()
 
-                # Mfiles not yet idempotent: need to re-evaluate models
-                logger.debug("Mfiles not idempotent, evaluating models again")
-                previous_mfile_data = mfile_data.copy()
+        #     # Values haven't all stabilised after 10 evaluations
+        #     # Which variables are still changing?
+        #     non_idempotent_warning = (
+        #         "Model evaluations at the current optimisation parameter vector "
+        #         "don't produce idempotent values in the final output."
+        #     )
+        #     non_idempotent_table = tabulate(
+        #         [[k, v[0], v[1]] for k, v in nonconverged_vars.items()],
+        #         headers=["Variable", "Previous value", "Current value"],
+        #     )
 
-            # Values haven't all stabilised after 10 evaluations
-            # Which variables are still changing?
-            non_idempotent_warning = (
-                "Model evaluations at the current optimisation parameter vector "
-                "don't produce idempotent values in the final output."
+        #     warnings.warn(
+        #         f"\033[93m{non_idempotent_warning}\n{non_idempotent_table}\033[0m",
+        #         stacklevel=2,
+        #     )
+
+        #     # Close idempotence files, write final output file and mfile
+        #     ft.init_module.close_idempotence_files()
+        #     finalise(
+        #         self.models,
+        #         ifail,
+        #         non_idempotent_msg=non_idempotent_warning + "\n" + non_idempotent_table,
+        #     )
+        #     return
+
+        # except Exception:
+        #     # If exception in model evaluations delete intermediate idempotence
+        #     # files to clean up
+        #     ft.init_module.close_idempotence_files()
+        #     raise
+
+        # Instead of checking for idempotence, just solve fixed-point problem for beta
+        beta_list = []
+        beta_calc_list = []
+
+        ##################################
+        # Just run beta calculation without idempotence/FPP solution for problem
+        # understanding
+        # def calc_beta(beta):
+        #     pv.beta = beta
+        #     self._call_models_once()
+        #     beta_calc = (
+        #         pv.beta_fast_alpha
+        #         + pv.beta_beam
+        #         + 2.0e3
+        #         * constants.rmu0
+        #         * constants.electron_charge
+        #         * (pv.dene * pv.ten + pv.nd_ions_total * pv.tin)
+        #         / pv.btot**2
+        #     )
+        #     print(f"{pv.beta = }")
+        #     print(f"{beta_calc = }")
+        #     return beta_calc.copy()
+
+        # betas = np.linspace(3.0e-2, 4.0e-2, 10)
+        # first_run = True
+        # for beta in betas:
+        #     # Ensure first point is converged FPP
+        #     if first_run:
+        #         first_run = False
+        #         for i in range(10):
+        #             calc_beta(beta)
+        #             # pass
+        #     beta_calc_list.append(calc_beta(beta))
+
+        # # Plotting
+        # df = pd.DataFrame({"beta": betas.tolist(), "beta_calc": beta_calc_list})
+        # df.to_csv("beta_fpp_problem.csv")
+
+        ####################################
+        # Not required when solved in call_models()
+        def calc_beta(beta):
+            self.data.physics.beta_total_vol_avg = beta
+            self._call_models_once()
+            beta_calc = (
+                self.data.physics.beta_fast_alpha
+                + self.data.physics.beta_beam
+                + 2.0e3
+                * constants.RMU0
+                * constants.ELECTRON_CHARGE
+                * (
+                    self.data.physics.nd_plasma_electrons_vol_avg
+                    * self.data.physics.temp_plasma_electron_density_weighted_kev
+                    + self.data.physics.nd_plasma_ions_total_vol_avg
+                    * self.data.physics.temp_plasma_ion_density_weighted_kev
+                )
+                / self.data.physics.b_plasma_total**2
             )
-            non_idempotent_table = tabulate(
-                [[k, v[0], v[1]] for k, v in nonconverged_vars.items()],
-                headers=["Variable", "Previous value", "Current value"],
-            )
 
-            logger.warning(
-                f"\033[93m{non_idempotent_warning}\n{non_idempotent_table}\033[0m",
-                stacklevel=2,
-            )
+            print("beta FPP iteration")
+            print(f"{beta = }")
+            print(f"{beta_calc = }")
+            diff = beta - beta_calc
+            print(f"beta - beta_calc = {diff}")
+            beta_list.append(beta)
+            beta_calc_list.append(beta_calc)
+            return beta_calc
 
-            # Close idempotence files, write final output file and mfile
-            OutputFileManager.close_idempotence_files(self.data.globals.output_prefix)
+        print("Running fixed-point problem for beta")
+        # Not sure copy is necessary
+        beta_0 = self.data.physics.beta_total_vol_avg
+        self.data.physics.beta_total_vol_avg = fixed_point(calc_beta, beta_0)
 
-        except Exception:
-            # If exception in model evaluations delete intermediate idempotence
-            # files to clean up
-            OutputFileManager.close_idempotence_files(self.data.globals.output_prefix)
-            raise
-        else:
-            finalise(
-                self.models,
-                self.data,
-                ifail,
-                non_idempotent_msg=non_idempotent_warning + "\n" + non_idempotent_table,
-            )
+        # Plotting
+        # df = pd.DataFrame({"beta": beta_list, "beta_calc": beta_calc_list})
+        # df.index.rename("iteration", inplace=True)
+        # df.to_csv("beta_fpp.csv")
 
-    def _call_models_once(self, xc: np.ndarray):
+        # logger.warning(
+        #             f"\033[93m{non_idempotent_warning}\n{non_idempotent_table}\033[0m",
+        #             stacklevel=2,
+        #         )
+
+        #         # Close idempotence files, write final output file and mfile
+        #         OutputFileManager.close_idempotence_files(self.data.globals.output_prefix)
+
+        #     except Exception:
+        #         # If exception in model evaluations delete intermediate idempotence
+        #         # files to clean up
+        #         OutputFileManager.close_idempotence_files(self.data.globals.output_prefix)
+        #         raise
+        #     else:
+        #         finalise(
+        #             self.models,
+        #             self.data,
+        #             ifail,
+        #             non_idempotent_msg=non_idempotent_warning + "\n" + non_idempotent_table,
+        #         )
+
+    def _call_models_once(self, xc: np.ndarray | None = None) -> None:
         """Call the physics and engineering models.
 
         This method is the principal caller of all the physics and
@@ -259,13 +404,14 @@ class Caller:
             Array of optimisation parameters
         """
         # Number of active iteration variables
-        nvars = len(xc)
+        # Not required when evaluating
+        if xc is not None and len(xc) > 0:
+            nvars = len(xc)
+            # Convert variables
+            set_scaled_iteration_variable(xc, nvars, self.data)
 
         # Increment the call counter
         self.data.numerics.n_model_calls += 1
-
-        # Convert variables
-        set_scaled_iteration_variable(xc, nvars, self.data)
 
         # Perform the various function calls
         # Stellarator caller
