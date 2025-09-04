@@ -1598,7 +1598,7 @@ def constraint_equation_61():
     )
 
 
-@ConstraintManager.register_constraint(62, "", ">=")
+@ConstraintManager.register_constraint(62, "", "=")
 def constraint_equation_62():
     """Lower limit on f_alpha_energy_confinement the ratio of alpha particle to energy confinement times
     author: P B Lloyd, CCFE, Culham Science Centre
@@ -1608,24 +1608,23 @@ def constraint_equation_62():
     t_energy_confinement: global thermal energy confinement time (sec)
     f_alpha_energy_confinement_min: Lower limit on f_alpha_energy_confinement the ratio of alpha particle to energy confinement times
     """
-    cc = (
-        1.0
-        - data_structure.constraint_variables.falpha_energy_confinement
-        * (
-            data_structure.physics_variables.t_alpha_confinement
-            / data_structure.physics_variables.t_energy_confinement
+    norm_res = 1.0 - (
+        data_structure.physics_variables.t_alpha_confinement
+        / (
+            data_structure.physics_variables.t_energy_confinement
+            * data_structure.constraint_variables.f_alpha_energy_confinement_min
         )
-        / data_structure.constraint_variables.f_alpha_energy_confinement_min
     )
-    return ConstraintResult(
-        cc,
-        data_structure.constraint_variables.f_alpha_energy_confinement_min,
-        (
-            data_structure.physics_variables.t_alpha_confinement
-            / data_structure.physics_variables.t_energy_confinement
-        )
-        * cc,
-    )
+    con_val = (
+        data_structure.physics_variables.t_energy_confinement
+        * data_structure.constraint_variables.f_alpha_energy_confinement_min
+    ) * (1.0 - norm_res)
+    con_err = (
+        data_structure.physics_variables.t_energy_confinement
+        * data_structure.constraint_variables.f_alpha_energy_confinement_min
+    ) * norm_res
+
+    return ConstraintResult(norm_res, con_val, con_err)
 
 
 @ConstraintManager.register_constraint(63, "", "<=")
