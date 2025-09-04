@@ -307,12 +307,12 @@ def check_process(inputs):  # noqa: ARG001
     """
 
     # Check that there are sufficient iteration variables
-    if data_structure.numerics.nvar < data_structure.numerics.neqns:
-        raise ProcessValidationError(
-            "Insufficient iteration variables to solve the problem! NVAR < NEQNS",
-            nvar=data_structure.numerics.nvar,
-            neqns=data_structure.numerics.neqns,
-        )
+    # if data_structure.numerics.nvar < data_structure.numerics.neqns:
+    #     raise ProcessValidationError(
+    #         "Insufficient iteration variables to solve the problem! NVAR < NEQNS",
+    #         nvar=data_structure.numerics.nvar,
+    #         neqns=data_structure.numerics.neqns,
+    #     )
 
     # Check that sufficient elements of ixc and icc have been specified
     if (data_structure.numerics.ixc[: data_structure.numerics.nvar] == 0).any():

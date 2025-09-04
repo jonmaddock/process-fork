@@ -94,7 +94,7 @@ INPUT_VARIABLES = {
     "runtitle": InputVariable(data_structure.global_variables, str),
     "verbose": InputVariable(data_structure.global_variables, int, choices=[0, 1]),
     "run_tests": InputVariable(data_structure.global_variables, int, choices=[0, 1]),
-    "ioptimz": InputVariable(data_structure.numerics, int, choices=[1, -2]),
+    "ioptimz": InputVariable(data_structure.numerics, int, choices=[1, -2, -1]),
     "epsvmc": InputVariable(data_structure.numerics, float, range=(0.0, 1.0)),
     "boundl": InputVariable(data_structure.numerics, float, array=True),
     "boundu": InputVariable(data_structure.numerics, float, array=True),
