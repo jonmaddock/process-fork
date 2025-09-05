@@ -1185,10 +1185,20 @@ class Physics(Model):
         ProcessValueError
            If znfuel is negative
         """
+        # f_nd_alpha_electron now needs to become an output
+        if self.data.physics.nd_plasma_alphas_thermal_vol_avg < 1.0e-6:
+            self.data.physics.nd_plasma_alphas_thermal_vol_avg = 4.5e18
+        else:
+            self.data.physics.nd_plasma_alphas_thermal_vol_avg = (
+                5
+                * self.data.physics.t_energy_confinement
+                * self.data.physics.fusden_alpha_total
+            )
+
         # Alpha ash portion
-        self.data.physics.nd_plasma_alphas_thermal_vol_avg = (
-            self.data.physics.nd_plasma_electrons_vol_avg
-            * self.data.physics.f_nd_alpha_thermal_electron
+        self.data.physics.f_nd_alpha_thermal_electron = (
+            self.data.physics.nd_plasma_alphas_thermal_vol_avg
+            / self.data.physics.nd_plasma_electrons_vol_avg
         )
 
         # ======================================================================
