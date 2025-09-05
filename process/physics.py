@@ -3303,10 +3303,20 @@ class Physics:
         References:
         """
 
+        # f_nd_alpha_electron now needs to become an output
+        if physics_variables.nd_plasma_alphas_vol_avg < 1.0e-6:
+            physics_variables.nd_plasma_alphas_vol_avg = 4.5e18
+        else:
+            physics_variables.nd_plasma_alphas_vol_avg = (
+                5
+                * physics_variables.t_energy_confinement
+                * physics_variables.fusden_alpha_total
+            )
+
         # Alpha ash portion
-        physics_variables.nd_plasma_alphas_vol_avg = (
-            physics_variables.nd_plasma_electrons_vol_avg
-            * physics_variables.f_nd_alpha_electron
+        physics_variables.f_nd_alpha_electron = (
+            physics_variables.nd_plasma_alphas_vol_avg
+            / physics_variables.nd_plasma_electrons_vol_avg
         )
 
         # ======================================================================
