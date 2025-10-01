@@ -479,6 +479,9 @@ OBS_VARS = {
     "neqns": "n_equality_constraints",
     "nineqns": "n_inequality_constraints",
     "f_p_div_lower": "f_p_div_lower_separatrix",
+    "tmargin_tf": "temp_tf_superconductor_margin_min",
+    "tmargin_cs": "temp_cs_superconductor_margin_min",
+    "temp_cs_margin": "temp_cs_superconductor_margin",
 }
 
 OBS_VARS_HELP = {
