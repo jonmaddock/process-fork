@@ -6916,11 +6916,11 @@ class Physics:
                 # just write a NaN--its not worth crashing PROCESS over.
                 physics_variables.hfac[i_confinement_time - 1] = np.nan
 
-            po.ocmmnt(
-                self.outfile,
-                f"{'':>2}{physics_variables.LABELS_CONFINEMENT_SCALINGS[i_confinement_time]:<38}"
-                f"{taueez:<28.3f}{physics_variables.hfac[i_confinement_time - 1]:.3f}",
-            )
+            # po.ocmmnt(
+            #     self.outfile,
+            #     f"{'':>2}{physics_variables.LABELS_CONFINEMENT_SCALINGS[i_confinement_time]:<38}"
+            #     f"{taueez:<28.3f}{physics_variables.hfac[i_confinement_time - 1]:.3f}",
+            # )
 
         po.oblnkl(self.outfile)
         po.ostars(self.outfile, 110)

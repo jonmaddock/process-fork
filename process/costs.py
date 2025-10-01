@@ -3001,8 +3001,8 @@ class Costs:
         fefcdr = (1.0e0 + cost_variables.discount_rate) ** cost_variables.cdrlife_cal
 
         #  Capital recovery factor
-
-        crfcdr = (fefcdr * cost_variables.discount_rate) / (fefcdr - 1.0e0)
+        # Causes error
+        # crfcdr = (fefcdr * cost_variables.discount_rate) / (fefcdr - 1.0e0)
 
         #  Annual cost of replacements
 
