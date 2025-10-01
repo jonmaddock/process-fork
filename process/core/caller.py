@@ -29,8 +29,8 @@ from process.models.tfcoil.superconducting import SuperconductingTFTurnType
 # from process.process_output import OutputFileManager
 from scipy.optimize import fixed_point
 from process.data_structure import physics_variables as pv
-# from process.fortran import constants
-# import pandas as pd
+from process import constants
+import pandas as pd
 
 if TYPE_CHECKING:
     from process.core.model import DataStructure
@@ -307,8 +307,8 @@ class Caller:
         #         pv.beta_fast_alpha
         #         + pv.beta_beam
         #         + 2.0e3
-        #         * constants.rmu0
-        #         * constants.electron_charge
+        #         * constants.RMU0
+        #         * constants.ELECTRON_CHARGE
         #         * (pv.dene * pv.ten + pv.nd_ions_total * pv.tin)
         #         / pv.btot**2
         #     )
