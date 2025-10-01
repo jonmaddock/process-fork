@@ -103,9 +103,14 @@ def calculate_radiation_powers(
     imp_rad = impurity.ImpurityRadiation(plasma_profile, data_structure)
     imp_rad.calculate_imprad()
 
-    pden_plasma_outer_rad_mw = (
-        imp_rad.pden_impurity_rad_total_mw - imp_rad.pden_impurity_core_rad_total_mw
-    )
+    switch = "New"
+    if switch == "New":
+        pden_plasma_outer_rad_mw = imp_rad.pden_impurity_rad_edge_total_mw
+    else:
+        # Old case
+        pden_plasma_outer_rad_mw = (
+            imp_rad.pden_impurity_rad_total_mw - imp_rad.pden_impurity_core_rad_total_mw
+        )
 
     # Synchrotron radiation power/volume; assumed to be from core only.
     pden_plasma_sync_mw = psync_albajar_fidone(
