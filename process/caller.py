@@ -15,8 +15,8 @@ from process.iteration_variables import set_scaled_iteration_variable
 from process.objectives import objective_function
 from process.process_output import OutputFileManager
 from scipy.optimize import fixed_point
-from process.fortran import physics_variables as pv
-from process.fortran import constants
+from process.data_structure import physics_variables as pv
+from process import constants
 import pandas as pd
 
 if TYPE_CHECKING:
@@ -120,15 +120,15 @@ class Caller:
                 pv.beta_fast_alpha
                 + pv.beta_beam
                 + 2.0e3
-                * constants.rmu0
-                * constants.electron_charge
+                * constants.RMU0
+                * constants.ELECTRON_CHARGE
                 * (pv.dene * pv.ten + pv.nd_ions_total * pv.tin)
                 / pv.btot**2
             )
             return beta_calc
 
         # Not sure copy is necessary
-        beta_0 = pv.beta.copy()
+        beta_0 = pv.beta
         pv.beta = fixed_point(calc_beta, beta_0)
 
         # Now idempotent, return
@@ -259,8 +259,8 @@ class Caller:
         #         pv.beta_fast_alpha
         #         + pv.beta_beam
         #         + 2.0e3
-        #         * constants.rmu0
-        #         * constants.electron_charge
+        #         * constants.RMU0
+        #         * constants.ELECTRON_CHARGE
         #         * (pv.dene * pv.ten + pv.nd_ions_total * pv.tin)
         #         / pv.btot**2
         #     )
@@ -292,8 +292,8 @@ class Caller:
                 pv.beta_fast_alpha
                 + pv.beta_beam
                 + 2.0e3
-                * constants.rmu0
-                * constants.electron_charge
+                * constants.RMU0
+                * constants.ELECTRON_CHARGE
                 * (pv.dene * pv.ten + pv.nd_ions_total * pv.tin)
                 / pv.btot**2
             )
@@ -309,7 +309,7 @@ class Caller:
 
         print("Running fixed-point problem for beta")
         # Not sure copy is necessary
-        beta_0 = pv.beta.copy()
+        beta_0 = pv.beta
         pv.beta = fixed_point(calc_beta, beta_0)
 
         # Plotting
@@ -317,14 +317,15 @@ class Caller:
         # df.index.rename("iteration", inplace=True)
         # df.to_csv("beta_fpp.csv")
 
-        #     # Close idempotence files, write final output file and mfile
-        #     OutputFileManager.close_idempotence_files()
-        #     finalise(
-        #         self.models,
-        #         ifail,
-        #         non_idempotent_msg=non_idempotent_warning + "\n" + non_idempotent_table,
-        #     )
-        #     return
+        # Close idempotence files, write final output file and mfile
+        OutputFileManager.close_idempotence_files()
+        finalise(
+            self.models,
+            ifail,
+            # non_idempotent_msg=non_idempotent_warning + "\n" + non_idempotent_table,
+            non_idempotent_msg="no message",
+        )
+        return
 
         # except Exception:
         #     # If exception in model evaluations delete intermediate idempotence
