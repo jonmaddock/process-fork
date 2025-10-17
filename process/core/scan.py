@@ -263,6 +263,7 @@ class Scan:
             # doopt() can also run just an evaluation
             start_time = time.time()
             ifail = self.doopt()
+            self.ifail = ifail
             write_output_files(
                 models=self.models,
                 data=self.data,
