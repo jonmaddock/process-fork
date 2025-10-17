@@ -103,8 +103,7 @@ def calculate_radiation_powers(
     imp_rad = impurity.ImpurityRadiation(plasma_profile, data_structure)
     imp_rad.calculate_imprad()
 
-    switch = "New"
-    if switch == "New":
+    if impurity.int_edge_rad:
         pden_plasma_outer_rad_mw = imp_rad.pden_impurity_rad_edge_total_mw
     else:
         # Old case
