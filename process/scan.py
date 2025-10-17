@@ -173,6 +173,7 @@ class Scan:
             # Solve single problem, rather than an array of problems (scan)
             # doopt() can also run just an evaluation
             ifail = self.doopt()
+            self.ifail = ifail
             write_output_files(models=self.models, ifail=ifail)
             show_errors(constants.NOUT)
             return
