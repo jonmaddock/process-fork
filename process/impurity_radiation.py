@@ -14,6 +14,9 @@ from process.exceptions import ProcessError, ProcessValueError
 
 logger = logging.getLogger(__name__)
 
+int_edge_rad = False
+rho_fix = False
+
 
 def initialise_imprad():
     """
@@ -503,6 +506,11 @@ def element2index(element: str):
         ) from e
 
 
+global pden_impurity_rad_profile
+global pden_impurity_core_rad_profile
+global pden_impurity_rad_edge_profile
+
+
 class ImpurityRadiation:
     """This class calculates the impurity radiation losses for given temperature and density profiles.
     The considers the  total impurity radiation from the core (pden_impurity_core_rad_total_mw) and total impurity radiation
@@ -567,9 +575,7 @@ class ImpurityRadiation:
         the values.
         """
 
-        switch = "New"
-
-        if switch == "New":
+        if int_edge_rad:
             # Core region radiation profile
             fradcore_profile = fradcore(
                 self.rho,
@@ -601,15 +607,28 @@ class ImpurityRadiation:
             )
         else:
             # Old case
-            pden_impurity_rad_total = self.pimp_profile * self.rho
-            pden_impurity_core_rad_total = self.pimp_profile * (
-                self.rho
-                * fradcore(
-                    self.rho,
-                    impurity_radiation_module.radius_plasma_core_norm,
-                    impurity_radiation_module.f_p_plasma_core_rad_reduction,
+            if rho_fix:
+                pden_impurity_rad_total = self.pimp_profile
+                pden_impurity_core_rad_total = self.pimp_profile * (
+                    # Nasty!
+                    # self.rho
+                    fradcore(
+                        self.rho,
+                        impurity_radiation_module.radius_plasma_core_norm,
+                        impurity_radiation_module.f_p_plasma_core_rad_reduction,
+                    )
                 )
-            )
+            else:
+                # Is this wrongly multiplying by rho too? Looks like it
+                pden_impurity_rad_total = self.pimp_profile * self.rho
+                pden_impurity_core_rad_total = self.pimp_profile * (
+                    self.rho
+                    * fradcore(
+                        self.rho,
+                        impurity_radiation_module.radius_plasma_core_norm,
+                        impurity_radiation_module.f_p_plasma_core_rad_reduction,
+                    )
+                )
 
             self.pden_impurity_rad_profile = np.add(
                 self.pden_impurity_rad_profile, pden_impurity_rad_total
@@ -617,6 +636,14 @@ class ImpurityRadiation:
             self.pden_impurity_core_rad_profile = np.add(
                 self.pden_impurity_core_rad_profile, pden_impurity_core_rad_total
             )
+
+        global pden_impurity_rad_profile
+        global pden_impurity_core_rad_profile
+        global pden_impurity_rad_edge_profile
+
+        pden_impurity_rad_profile = self.pden_impurity_rad_profile
+        pden_impurity_core_rad_profile = self.pden_impurity_core_rad_profile
+        pden_impurity_rad_edge_profile = self.pden_impurity_rad_edge_profile
 
     def integrate_radiation_loss_profiles(self):
         """Integrate the radiation loss profiles using the Simpson rule.
@@ -630,9 +657,7 @@ class ImpurityRadiation:
             self.pden_impurity_core_rad_profile, x=self.rho, dx=self.rhodx
         )
 
-        switch = "New"
-
-        if switch == "New":
+        if int_edge_rad:
             self.pden_impurity_rad_edge_total_mw = 2.0e-6 * integrate.simpson(
                 self.pden_impurity_rad_edge_profile, x=self.rho, dx=self.rhodx
             )
