@@ -3339,7 +3339,7 @@ class Physics:
             )
         else:
             # Use Matti's equation for n_alpha
-            # print(f"{eval_count = }")
+            print(f"{eval_count = }")
             # Crude avoidance of div by 0s on first two runs
             # beta FPP ensures this is run multiple times (> 2)
             if eval_count < 2:
@@ -3357,15 +3357,10 @@ class Physics:
                     physics_variables.proton_rate_density = 1.144e16 / 20.162
 
                 # Matti's quadratic
-                tau_alpha_tau_e_ratio = 5
                 a = (
                     physics_variables.nd_plasma_electrons_vol_avg
-                    * tau_alpha_tau_e_ratio
-                    * physics_variables.t_energy_confinement
-                    * (
-                        physics_variables.fusden_plasma_alpha
-                        / physics_variables.nd_plasma_fuel_ions_vol_avg**2
-                    )
+                    * physics_variables.t_alpha_confinement
+                    * physics_variables.fusden_plasma_alpha
                 )
                 b = (
                     1
@@ -3376,20 +3371,15 @@ class Physics:
                     - (self.znimp / physics_variables.nd_plasma_electrons_vol_avg)
                 )
                 c = z_he + (
-                    (
-                        physics_variables.proton_rate_density
-                        / physics_variables.nd_plasma_fuel_ions_vol_avg**2
-                    )
-                    / (
-                        physics_variables.fusden_plasma_alpha
-                        / physics_variables.nd_plasma_fuel_ions_vol_avg**2
-                    )
+                    physics_variables.proton_rate_density
+                    / physics_variables.fusden_plasma_alpha
                 )
                 quad = np.polynomial.Polynomial((
                     b**2 / c**2,
                     ((-2 * a * b * c) - 1) / (a * c**2),
                     1,
                 ))
+
                 roots = quad.roots()
                 # Root is alpha concentration: n_alpha / n_e
                 # Find roots that are physical (0 < c_alpha < 1) and have a small
@@ -3400,11 +3390,11 @@ class Physics:
                     & (np.abs(np.imag(roots)) < 1e-6)
                 ]
                 if np.any(physical_roots):
-                    # if len(physical_roots) > 1:
-                    #     raise ValueError(
-                    #         f"2 physical roots for c_alpha: {physical_roots}"
-                    #     )
-                    # Choose the first root, even if 2 exist for now: clearly not good!
+                    if len(physical_roots) > 1:
+                        raise ValueError(
+                            f"2 physical roots for c_alpha: {physical_roots}"
+                        )
+
                     # Single physical root: use it
                     physics_variables.nd_plasma_alphas_vol_avg = (
                         np.real(physical_roots[0]).item()
