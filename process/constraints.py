@@ -2391,6 +2391,19 @@ def constraint_equation_92():
     return ConstraintResult(cc, 1.0, cc)
 
 
+@ConstraintManager.register_constraint(93, "", "=")
+def constraint_equation_93():
+    num = (
+        data_structure.physics_variables.fusrat_total
+        / data_structure.physics_variables.burnup
+    )
+    denom = data_structure.physics_variables.molflow_plasma_fuelling_required
+    cc = 1.0 - num / denom
+
+    # Check form of other returned values
+    return ConstraintResult(cc, denom * (1.0 - cc), denom * cc)
+
+
 def constraint_eqns(m: int, ieqn: int):
     """Evaluates the constraints given the current state of PROCESS.
 

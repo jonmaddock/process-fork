@@ -2355,6 +2355,9 @@ INPUT_VARIABLES = {
     "force_vmcon_inequality_tolerance": InputVariable(
         data_structure.numerics, float, range=(0.0, 1e10)
     ),
+    "molflow_plasma_fuelling_required": InputVariable(
+        data_structure.physics_variables, float, range=(1.0e20, 1.0e23)
+    ),
 }
 
 

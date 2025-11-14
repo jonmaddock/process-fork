@@ -3669,7 +3669,10 @@ class Physics:
         rndfuel = fusrat
 
         # Required fuelling rate (fuel ion pairs/second) (previously Amps)
-        molflow_plasma_fuelling_required = rndfuel / burnup
+        # TODO Remove now this is an input
+        molflow_plasma_fuelling_required = (
+            physics_variables.molflow_plasma_fuelling_required
+        )
 
         f_alpha_energy_confinement = t_alpha_confinement / t_energy_confinement
 
