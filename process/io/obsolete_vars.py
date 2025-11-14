@@ -471,7 +471,7 @@ OBS_VARS = {
     "t_burn": "t_plant_pulse_burn",
     "tfootfi": "f_dr_tf_outboard_inboard",
     "tmargin_tf": "temp_tf_superconductor_margin_min",
-    "tmargin_cs": "temp_cs_superconductor_margin_min",
+    "tmargmin_cs": "temp_cs_superconductor_margin_min",
     "temp_cs_margin": "temp_cs_superconductor_margin",
 }
 
