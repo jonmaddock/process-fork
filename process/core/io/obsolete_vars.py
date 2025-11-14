@@ -473,7 +473,7 @@ OBS_VARS = {
     "i_cs_stress": None,
     "f_nd_alpha_electron": "f_nd_alpha_thermal_electron",
     "tmargin_tf": "temp_tf_superconductor_margin_min",
-    "tmargin_cs": "temp_cs_superconductor_margin_min",
+    "tmargmin_cs": "temp_cs_superconductor_margin_min",
     "temp_cs_margin": "temp_cs_superconductor_margin",
 }
 
