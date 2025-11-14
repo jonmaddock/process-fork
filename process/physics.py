@@ -29,15 +29,8 @@ from process.data_structure import (
     times_variables,
 )
 from process.exceptions import ProcessValueError
-import pandas as pd
-import os
 
 logger = logging.getLogger(__name__)
-
-old_n_alpha_calc = False
-current_n_alpha_calc = False
-eval_count = 0
-mattis_test = False
 
 
 @nb.jit(nopython=True, cache=True)
@@ -3279,8 +3272,8 @@ class Physics:
             i_density_limit - 1
         ]
 
-    # @staticmethod
-    def plasma_composition(self) -> None:
+    @staticmethod
+    def plasma_composition() -> None:
         """
         Calculates various plasma component fractional makeups.
 
@@ -3309,107 +3302,22 @@ class Physics:
 
         References:
         """
-        # Used to avoid n_alpha calculation with as-yet undefined values
-        global eval_count
 
-        if old_n_alpha_calc:
-            # The status quo n_alpha method, using f_nd_alpha_electron as an opt param
-            physics_variables.nd_plasma_alphas_vol_avg = (
-                physics_variables.nd_plasma_electrons_vol_avg
-                * physics_variables.f_nd_alpha_electron
-            )
-        elif current_n_alpha_calc:
-            # My method assuming tau_alpha / tau_E = 5
-            # f_nd_alpha_electron is now an output
-            # Avoid calculating when required values are undefined in first model evaluation
-            if physics_variables.nd_plasma_alphas_vol_avg < 1.0e-6:
-                physics_variables.nd_plasma_alphas_vol_avg = 4.5e18
-
-            else:
-                physics_variables.nd_plasma_alphas_vol_avg = (
-                    5
-                    * physics_variables.t_energy_confinement
-                    * physics_variables.fusden_alpha_total
-                )
-
-            # Alpha ash portion
-            physics_variables.f_nd_alpha_electron = (
-                physics_variables.nd_plasma_alphas_vol_avg
-                / physics_variables.nd_plasma_electrons_vol_avg
-            )
+        # f_nd_alpha_electron now needs to become an output
+        if physics_variables.nd_plasma_alphas_vol_avg < 1.0e-6:
+            physics_variables.nd_plasma_alphas_vol_avg = 4.5e18
         else:
-            # Use Matti's equation for n_alpha
-            print(f"{eval_count = }")
-            # Crude avoidance of div by 0s on first two runs
-            # beta FPP ensures this is run multiple times (> 2)
-            if eval_count < 2:
-                # Choose vaguely sensible guess for now
-                physics_variables.nd_plasma_alphas_vol_avg = 4.0e18
-                eval_count += 1
-            else:
-                eval_count += 1
-                z_he = 2
-
-                # Hardcoding for testing purposes
-                if mattis_test:
-                    physics_variables.t_alpha_confinement = 20.162
-                    physics_variables.fusden_plasma_alpha = 4.207e18 / 20.162
-                    physics_variables.proton_rate_density = 1.144e16 / 20.162
-
-                # Matti's quadratic
-                a = (
-                    physics_variables.nd_plasma_electrons_vol_avg
-                    * physics_variables.t_alpha_confinement
-                    * physics_variables.fusden_plasma_alpha
-                )
-                b = (
-                    1
-                    - (
-                        physics_variables.nd_beam_ions
-                        / physics_variables.nd_plasma_electrons_vol_avg
-                    )
-                    - (self.znimp / physics_variables.nd_plasma_electrons_vol_avg)
-                )
-                c = z_he + (
-                    physics_variables.proton_rate_density
-                    / physics_variables.fusden_plasma_alpha
-                )
-                quad = np.polynomial.Polynomial((
-                    b**2 / c**2,
-                    ((-2 * a * b * c) - 1) / (a * c**2),
-                    1,
-                ))
-
-                roots = quad.roots()
-                # Root is alpha concentration: n_alpha / n_e
-                # Find roots that are physical (0 < c_alpha < 1) and have a small
-                # enough (!) imaginary component (< 1e-6)
-                physical_roots = roots[
-                    (np.real(roots) > 0.0)
-                    & (np.real(roots) < 1.0)
-                    & (np.abs(np.imag(roots)) < 1e-6)
-                ]
-                if np.any(physical_roots):
-                    if len(physical_roots) > 1:
-                        raise ValueError(
-                            f"2 physical roots for c_alpha: {physical_roots}"
-                        )
-
-                    # Single physical root: use it
-                    physics_variables.nd_plasma_alphas_vol_avg = (
-                        np.real(physical_roots[0]).item()
-                        * physics_variables.nd_plasma_electrons_vol_avg
-                    )
-                else:
-                    raise ValueError(
-                        f"No unique real physical value for c_alpha could be found: {roots}"
-                    )
-
-            # Alpha ash portion
-            physics_variables.f_nd_alpha_electron = (
-                physics_variables.nd_plasma_alphas_vol_avg
-                / physics_variables.nd_plasma_electrons_vol_avg
+            physics_variables.nd_plasma_alphas_vol_avg = (
+                5
+                * physics_variables.t_energy_confinement
+                * physics_variables.fusden_alpha_total
             )
+
+        # Alpha ash portion
+        physics_variables.f_nd_alpha_electron = (
+            physics_variables.nd_plasma_alphas_vol_avg
+            / physics_variables.nd_plasma_electrons_vol_avg
+        )
 
         # ======================================================================
 
@@ -3458,7 +3366,6 @@ class Physics:
                     impurity_radiation_module.f_nd_impurity_electron_array[imp]
                     * physics_variables.nd_plasma_electrons_vol_avg
                 )
-        self.znimp = znimp
 
         # ======================================================================
 
@@ -3471,22 +3378,6 @@ class Physics:
             - physics_variables.nd_beam_ions
             - znimp
         )
-        print(f"{znfuel = }")
-        znfuel_data = {
-            "znfuel": [znfuel],
-            "ne": [physics_variables.dene],
-            "nd_alphas": [2 * physics_variables.nd_alphas],
-            "nd_protons": [physics_variables.nd_protons],
-            "nd_beam_ions": [physics_variables.nd_beam_ions],
-            "znimp": [znimp],
-            "te": [physics_variables.te],
-        }
-        output_path = "znfuel.csv"
-        pd.DataFrame(znfuel_data).to_csv(
-            output_path, mode="a", header=not os.path.exists(output_path), index=False
-        )
-        if znfuel < 0.0:
-            raise ValueError(f"znfuel is negative: {znfuel}")
 
         # ======================================================================
 
