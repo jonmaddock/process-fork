@@ -113,7 +113,7 @@ class Caller:
 
         #####################
         def calc_beta(beta):
-            pv.beta = beta
+            pv.beta_total_vol_avg = beta
             # Pass xc: required to scale iteration vars correctly
             self._call_models_once(xc)
             beta_calc = (
@@ -122,14 +122,19 @@ class Caller:
                 + 2.0e3
                 * constants.RMU0
                 * constants.ELECTRON_CHARGE
-                * (pv.dene * pv.ten + pv.nd_ions_total * pv.tin)
-                / pv.btot**2
+                * (
+                    pv.nd_plasma_electrons_vol_avg
+                    * pv.temp_plasma_electron_density_weighted_kev
+                    + pv.nd_plasma_ions_total_vol_avg
+                    * pv.temp_plasma_ion_density_weighted_kev
+                )
+                / pv.b_plasma_total**2
             )
             return beta_calc
 
         # Not sure copy is necessary
-        beta_0 = pv.beta
-        pv.beta = fixed_point(calc_beta, beta_0)
+        beta_0 = pv.beta_total_vol_avg
+        pv.beta_total_vol_avg = fixed_point(calc_beta, beta_0)
 
         # Now idempotent, return
         # Evaluate objective function and constraints
@@ -286,7 +291,7 @@ class Caller:
         ####################################
         # Not required when solved in call_models()
         def calc_beta(beta):
-            pv.beta = beta
+            pv.beta_total_vol_avg = beta
             self._call_models_once()
             beta_calc = (
                 pv.beta_fast_alpha
@@ -294,8 +299,13 @@ class Caller:
                 + 2.0e3
                 * constants.RMU0
                 * constants.ELECTRON_CHARGE
-                * (pv.dene * pv.ten + pv.nd_ions_total * pv.tin)
-                / pv.btot**2
+                * (
+                    pv.nd_plasma_electrons_vol_avg
+                    * pv.temp_plasma_electron_density_weighted_kev
+                    + pv.nd_plasma_ions_total_vol_avg
+                    * pv.temp_plasma_ion_density_weighted_kev
+                )
+                / pv.b_plasma_total**2
             )
 
             print("beta FPP iteration")
@@ -309,8 +319,8 @@ class Caller:
 
         print("Running fixed-point problem for beta")
         # Not sure copy is necessary
-        beta_0 = pv.beta
-        pv.beta = fixed_point(calc_beta, beta_0)
+        beta_0 = pv.beta_total_vol_avg
+        pv.beta_total_vol_avg = fixed_point(calc_beta, beta_0)
 
         # Plotting
         # df = pd.DataFrame({"beta": beta_list, "beta_calc": beta_calc_list})
