@@ -328,7 +328,7 @@ class Caller:
         # df.to_csv("beta_fpp.csv")
 
         # Close idempotence files, write final output file and mfile
-        OutputFileManager.close_idempotence_files()
+        # OutputFileManager.close_idempotence_files()
         finalise(
             self.models,
             ifail,
