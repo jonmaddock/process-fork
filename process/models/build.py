@@ -1672,10 +1672,12 @@ class Build(Model):
                 self.data.build.dz_fw_plasma_gap,
             )
 
-        # Issue #514 Radial dimensions of inboard leg
-        # Calculate self.data.build.dr_tf_inboard if
-        # self.data.tfcoil.dr_tf_wp_with_insulation is an iteration variable (140)
-        if 140 in self.data.numerics.ixc[0 : self.data.numerics.nvar]:
+            # Issue #514 Radial dimensions of inboard leg
+            # Calculate self.data.build.dr_tf_inboard if
+            # self.data.tfcoil.dr_tf_wp_with_insulation is an iteration variable (140)
+            # Always calculate: wasn't being calculated in eval mode (no iter vars)
+            # Requires proper solution
+            # if 140 in numerics.ixc[0 : numerics.nvar]:
             self.data.build.dr_tf_inboard = (
                 self.data.tfcoil.dr_tf_wp_with_insulation
                 + self.data.tfcoil.dr_tf_plasma_case
