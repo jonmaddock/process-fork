@@ -1248,6 +1248,11 @@ class Physics(Model):
             - znimp
         )
 
+        # Can occur during solution: catch early instead of becoming a
+        # confusing bootstrap current error
+        if znfuel < 0.0:
+            raise ValueError(f"znfuel is negative: {znfuel}")
+
         # ======================================================================
 
         # Fuel ion density, nd_plasma_fuel_ions_vol_avg
