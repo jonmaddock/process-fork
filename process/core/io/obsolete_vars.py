@@ -475,6 +475,7 @@ OBS_VARS = {
     "tmargin_tf": "temp_tf_superconductor_margin_min",
     "tmargmin_cs": "temp_cs_superconductor_margin_min",
     "temp_cs_margin": "temp_cs_superconductor_margin",
+    "fvsbrnni": "f_c_plasma_non_inductive",
 }
 
 OBS_VARS_HELP = {
