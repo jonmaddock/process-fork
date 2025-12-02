@@ -7222,6 +7222,8 @@ class Physics:
 
         # Calculate electron and ion temperature profiles
         tempe = plasma_profile.teprofile.profile_y
+        if (tempe < 0).any():
+            raise ValueError("Negative temperature in plasma profile")
         tempi = (
             physics_variables.temp_plasma_ion_vol_avg_kev
             / physics_variables.temp_plasma_electron_vol_avg_kev
