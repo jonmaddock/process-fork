@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING
 
 import numba as nb
 import numpy as np
-import os
-import pandas as pd
 
 import process.models.physics.fusion_reactions as reactions
 import process.models.physics.radiation_power as physics_funcs
@@ -1187,19 +1185,6 @@ class Physics(Model):
         ProcessValueError
            If znfuel is negative
         """
-        data = {
-            "ne": [self.data.physics.nd_plasma_electrons_vol_avg],
-            "te": [self.data.physics.temp_plasma_electron_vol_avg_kev],
-        }
-        output_path = "iterations.csv"
-        # Only write a header when the file is first created
-        pd.DataFrame(data).to_csv(
-            output_path,
-            mode="a",
-            header=not os.path.exists(output_path),
-            index=False,
-        )
-
         # f_nd_alpha_electron now needs to become an output
         if self.data.physics.nd_plasma_alphas_thermal_vol_avg < 1.0e-6:
             self.data.physics.nd_plasma_alphas_thermal_vol_avg = 4.5e18
