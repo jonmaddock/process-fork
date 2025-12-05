@@ -18,6 +18,8 @@ from scipy.optimize import fsolve
 import nlopt
 import time
 from scipy import optimize
+import os
+import pandas as pd
 
 from process.core.exceptions import ProcessValueError
 from process.core.model import DataStructure
@@ -306,6 +308,9 @@ class VmconBounded(Vmcon):
 class FSolve(_Solver):
     """Solve equality constraints to ensure model consistency."""
 
+    global fsolve_con_eval_count
+    fsolve_con_eval_count = 0
+
     def evaluate_eq_cons(self, x: np.ndarray) -> np.ndarray:
         """Evaluate equality constraints.
 
@@ -319,8 +324,28 @@ class FSolve(_Solver):
         np.ndarray
             equality constraint vector
         """
+        global fsolve_con_eval_count
+        fsolve_con_eval_count += 1
+        print(f"{fsolve_con_eval_count = }")
+        print(f"fsolve sol vec {x = }")
         # Evaluate equality constraints only
         _, conf = self.evaluators.fcnvmc1(x.shape[0], self.meq, x, 0)
+
+        # Write iteration parameter vector to CSV
+        # Calling fcnvmc1 scales the normalised x back up to absolute optimisation
+        # parameter values and sets the required variables
+        data = {
+            "ne": [self.data.physics.nd_plasma_electrons_vol_avg],
+            "te": [self.data.physics.temp_plasma_electron_vol_avg_kev],
+        }
+        output_path = "iterations.csv"
+        # Only write a header when the file is first created
+        pd.DataFrame(data).to_csv(
+            output_path,
+            mode="a",
+            header=not os.path.exists(output_path),
+            index=False,
+        )
 
         # Required for including 2 iter vars in output, but only solving for the first one!
         # return conf[0]
