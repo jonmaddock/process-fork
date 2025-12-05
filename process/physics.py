@@ -28,8 +28,6 @@ from process.data_structure import (
     stellarator_variables,
     times_variables,
 )
-import os
-import pandas as pd
 from process.exceptions import ProcessValueError
 
 logger = logging.getLogger(__name__)
@@ -3304,19 +3302,6 @@ class Physics:
 
         References:
         """
-        data = {
-            "ne": [physics_variables.nd_plasma_electrons_vol_avg],
-            "te": [physics_variables.temp_plasma_electron_vol_avg_kev],
-        }
-        output_path = "iterations.csv"
-        # Only write a header when the file is first created
-        pd.DataFrame(data).to_csv(
-            output_path,
-            mode="a",
-            header=not os.path.exists(output_path),
-            index=False,
-        )
-
         # f_nd_alpha_electron now needs to become an output
         if physics_variables.nd_plasma_alphas_vol_avg < 1.0e-6:
             physics_variables.nd_plasma_alphas_vol_avg = 4.5e18
