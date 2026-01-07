@@ -392,8 +392,6 @@ class FSolve(_Solver):
         fsolve_con_eval_count += 1
         print(f"{fsolve_con_eval_count = }")
         print(f"fsolve sol vec {x = }")
-        # Evaluate equality constraints only
-        _, conf = self.evaluators.fcnvmc1(x.shape[0], self.meq, x, 0)
 
         # Write iteration parameter vector to CSV
         # Scale opt params up to real values before writing values
@@ -430,7 +428,7 @@ class FSolve(_Solver):
         """
         print("Solving equality constraints using fsolve")
         self.x, _info, err, msg = fsolve(
-            self.evaluate_eq_cons, self.x_0, full_output=True
+            self.evaluate_eq_cons, self.x_0, full_output=True, factor=0.1
         )
 
         # Evaluate equality and inequality constraints at equality-satisfying solution
