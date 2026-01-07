@@ -24,6 +24,8 @@ import pandas as pd
 from process.data_structure import global_variables, numerics, physics_variables
 from process.evaluators import Evaluators
 from process.exceptions import ProcessValueError
+from process.iteration_variables import set_scaled_iteration_variable
+
 
 logger = logging.getLogger(__name__)
 
@@ -308,8 +310,8 @@ class FSolve(_Solver):
         _, conf = self.evaluators.fcnvmc1(x.shape[0], self.meq, x, 0)
 
         # Write iteration parameter vector to CSV
-        # Calling fcnvmc1 scales the normalised x back up to absolute optimisation
-        # parameter values and sets the required variables
+        # Scale opt params up to real values before writing values
+        set_scaled_iteration_variable(x, len(x))
         data = {
             "ne": [physics_variables.nd_plasma_electrons_vol_avg],
             "te": [physics_variables.temp_plasma_electron_vol_avg_kev],
@@ -322,6 +324,11 @@ class FSolve(_Solver):
             header=not os.path.exists(output_path),
             index=False,
         )
+
+        # Evaluate equality constraints only
+        # Calling fcnvmc1 scales the normalised x back up to absolute optimisation
+        # parameter values and sets the required variables
+        _, conf = self.evaluators.fcnvmc1(x.shape[0], self.meq, x, 0)
 
         # Required for including 2 iter vars in output, but only solving for the first one!
         # return conf[0]
