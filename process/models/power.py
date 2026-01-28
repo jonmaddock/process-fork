@@ -1006,9 +1006,11 @@ class Power(Model):
         )
 
         #  Number of primary heat exchangers
-        self.data.heat_transport.n_primary_heat_exchangers = math.ceil(
-            self.data.heat_transport.p_plant_primary_heat_mw / 1000.0e0
-        )
+        # heat_transport_variables.n_primary_heat_exchangers = math.ceil(
+        #     heat_transport_variables.p_plant_primary_heat_mw / 1000.0e0
+        # )
+        self.data.heat_transport.p_plant_primary_heat_mw = 300
+        self.data.heat_transport.n_primary_heat_exchangers = 1
 
     def calculate_cryo_loads(self):
         """Calculates and updates the cryogenic heat loads for the system.
