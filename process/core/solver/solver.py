@@ -27,6 +27,9 @@ from process.core.model import DataStructure
 from process.core.solver.evaluators import Evaluators
 from process.data_structure.numerics import SolverOutputCondition
 from process.core.solver.iteration_variables import set_scaled_iteration_variable
+from scipy.integrate import solve_ivp
+from process.core.solver import constraints
+
 
 logger = logging.getLogger(__name__)
 
@@ -367,6 +370,87 @@ class VmconBounded(Vmcon):
             if entry:
                 x_0[index] = self.bndu[index]
         self.x_0 = x_0
+
+
+# TODO Have to define as functions (not methods on SolveIVP) as terminal event
+# requires attribute setting on function: improve!
+def detect_steady_state(t, y, self):
+    # Terminate integration when d/dts below tolerance (crosses 0)
+    # TODO Only toleratnce on ne ATM
+    tol = 1.0e-3
+    d_dts = derivatives(t, y, self)
+    return np.sqrt(d_dts[1] ** 2) - tol
+
+
+def derivatives(t, y, self):
+    # Evaluate PPB and Fuel Equilibrium
+    # fcnvmc1 scales up to real values
+    print(f"Normalised values = {y}")
+    _, self.conf = self.evaluators.fcnvmc1(y.shape[0], self.m, y, 0)
+    # Need absolute constraint residuals
+    ppb = constraints.constraint_equation_2().constraint_error
+    fe = constraints.constraint_equation_93().constraint_error
+
+    k = 1.380649e-23
+    ni = physics_variables.nd_plasma_ions_total_vol_avg
+    ne = physics_variables.nd_plasma_electrons_vol_avg
+    te = physics_variables.temp_plasma_electron_vol_avg_kev
+    vol = physics_variables.vol_plasma
+    dte_dt = (2 / (3 * k * (ne + ni) * vol)) * (ppb / 1.602e-19)
+    dne_dt = fe
+
+    print(f"t = {t}, te = {te}, ne = {ne}")
+
+    # Scale back down to nondimensionalised values
+    # TODO Iteration vars (te, ne) need to be in right order (same as scale)!
+    # TODO Sort out scaling array
+    return np.array([dte_dt, dne_dt]) * self.scaling[:2]
+
+
+class SolveIVP(_Solver):
+    # Nondimensionalisation
+    t0 = 1.25e-4
+
+    def solve(self) -> int:
+        initial_values = self.x_0
+        time_span = np.array([0.0, 1.25e-4]) / self.t0
+        # TODO Have to set attribute on function
+        detect_steady_state.terminal = True
+        self.scaling = np.array(numerics.scale)
+
+        # Radau required due to "stiffness": very different timescales of dte/dt and dne/dt
+        sol = solve_ivp(
+            fun=derivatives,
+            args=(self,),
+            t_span=time_span,
+            y0=initial_values,
+            method="Radau",
+            events=detect_steady_state,
+        )
+        print(f"{initial_values = }")
+        # TODO Sort :2
+        print(f"{sol.y=}")
+        y_real = sol.y / self.scaling[:2, np.newaxis]
+        # t_real = sol.t * self.t0
+        # Final point
+        print(f"{y_real=}")
+        sol_vec = sol.y[:, -1]
+        sol_vec_real = y_real[:, -1]
+        print(f"Equilibrium values = [{sol_vec_real[0]}, {sol_vec_real[1]}]")
+        print(sol.message)
+
+        # Evaluate equality and inequality constraints at equality-satisfying solution
+        # (or at last iteration of x if solution not found)
+        _, self.conf = self.evaluators.fcnvmc1(sol_vec.shape[0], self.m, sol_vec, 0)
+
+        # err == 1 for successful solve (termination event)
+        if sol.status != 1:
+            print(f"fsolve error code {sol.status}: {sol.message}")
+        self.info = sol.status
+        # No objective function
+        self.objf = None
+        self.x = sol_vec
+        return self.info
 
 
 class FSolve(_Solver):
@@ -802,6 +886,8 @@ def get_solver(data: DataStructure, solver_name: str = "vmcon") -> _Solver:
         solver = SLSQP(data=data)
     elif solver_name == "scipy_slsqp":
         solver = Scipy_SLSQP(data=data)
+    elif solver_name == "solve_ivp":
+        solver = SolveIVP(data=data)
     else:
         try:
             solver = load_external_solver(solver_name)

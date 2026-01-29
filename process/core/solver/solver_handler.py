@@ -188,7 +188,7 @@ class SolverHandler:
         )
 
         # Objective function output: none for fsolve
-        if self.solver_name != "fsolve":
+        if self.solver_name not in ["fsolve", "solve_ivp"]:
             process_output.ovarre(
                 constants.NOUT,
                 "Figure of merit switch",
@@ -226,10 +226,10 @@ class SolverHandler:
 
         process_output.oblnkl(constants.NOUT)
 
-        if self.solver_name == "fsolve":
+        if self.solver_name in ["fsolve", "solve_ivp"]:
             process_output.write(
                 constants.NOUT,
-                "PROCESS has solved using fsolve.\n"
+                f"PROCESS has solved using {self.solver_name}.\n"
                 if ifail == SolverOutputCondition.CONVERGED
                 else "PROCESS failed to solve using fsolve.\n",
             )
