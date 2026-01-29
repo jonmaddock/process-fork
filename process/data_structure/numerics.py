@@ -29,8 +29,9 @@ class PROCESSRunMode(IntEnum):
     """In this mode, the code will perform optimisation using the VMCON solver
     (or a custom solver if specified) to try to find a design point that optimises
     the figure of merit while satisfying the constraints.  This is the default mode
-    of operation for PROCESS.
-    """
+    of operation for PROCESS."""
+    INTEGRATION = (-3, "Integration")
+    """Integrate temperature and density time derivatives."""
 
     def __new__(cls, value: int, description: str):
         """Create a new PROCESSRunMode enum member with description.

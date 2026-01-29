@@ -443,6 +443,9 @@ class SingleRun:
         elif self.data.numerics.ioptimz == PROCESSRunMode.SOLUTION:
             # Solve equality (consistency) constraints only using fsolve (HYBRD)
             self.solver = "fsolve"
+        elif self.data.numerics.ioptimz == PROCESSRunMode.INTEGRATION:
+            # Integrate
+            self.solver = "solve_ivp"
         # ioptimz == -2: evaluation
         elif self.data.numerics.ioptimz == PROCESSRunMode.EVALUATION:
             # Evalutation only: compute the output variables now
