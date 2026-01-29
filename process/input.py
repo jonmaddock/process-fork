@@ -94,7 +94,7 @@ INPUT_VARIABLES = {
     "runtitle": InputVariable(data_structure.global_variables, str),
     "verbose": InputVariable(data_structure.global_variables, int, choices=[0, 1]),
     "run_tests": InputVariable(data_structure.global_variables, int, choices=[0, 1]),
-    "ioptimz": InputVariable(data_structure.numerics, int, choices=[1, -2, -1]),
+    "ioptimz": InputVariable(data_structure.numerics, int, choices=[1, -2, -1, -3]),
     "epsvmc": InputVariable(data_structure.numerics, float, range=(0.0, 1.0)),
     "boundl": InputVariable(data_structure.numerics, float, array=True),
     "boundu": InputVariable(data_structure.numerics, float, array=True),
@@ -1463,14 +1463,16 @@ INPUT_VARIABLES = {
         data_structure.rebco_variables,
         float,
         range=(1e-08, 0.0001),
-        additional_actions=lambda _n, rt, _i, _c: rt <= 1e-6
-        or warn(
-            (
-                "the relationship between REBCO layer thickness and current density is not linear."
-                "REBCO layer thicknesses > 1um should be considered an aggressive extrapolation of"
-                "current HTS technology and any results must be considered speculative."
-            ),
-            stacklevel=1,
+        additional_actions=lambda _n, rt, _i, _c: (
+            rt <= 1e-6
+            or warn(
+                (
+                    "the relationship between REBCO layer thickness and current density is not linear."
+                    "REBCO layer thicknesses > 1um should be considered an aggressive extrapolation of"
+                    "current HTS technology and any results must be considered speculative."
+                ),
+                stacklevel=1,
+            )
         ),
     ),
     "redun_vacp": InputVariable(

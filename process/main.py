@@ -467,6 +467,9 @@ class SingleRun:
         elif data_structure.numerics.ioptimz == -1:
             # Solve equality (consistency) constraints only using fsolve (HYBRD)
             self.solver = "fsolve"
+        elif data_structure.numerics.ioptimz == -3:
+            # Integrate
+            self.solver = "solve_ivp"
         elif data_structure.numerics.ioptimz == -2:
             # Evalutation only: compute the output variables now
             # Get optimisation parameters x, evaluate models

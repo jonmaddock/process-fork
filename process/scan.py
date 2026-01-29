@@ -290,7 +290,7 @@ class Scan:
             constants.NOUT, "Optimisation switch", "(ioptimz)", numerics.ioptimz
         )
         # Objective function output: none for fsolve
-        if self.solver != "fsolve":
+        if self.solver not in ["fsolve", "solve_ivp"]:
             process_output.ovarin(
                 constants.NOUT, "Figure of merit switch", "(minmax)", numerics.minmax
             )
@@ -337,7 +337,7 @@ class Scan:
             )
         process_output.oblnkl(constants.NOUT)
 
-        if self.solver == "fsolve":
+        if self.solver in ["fsolve", "solve_ivp"]:
             if ifail == 1:
                 msg = "PROCESS has solved using fsolve."
             else:
