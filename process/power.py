@@ -727,11 +727,9 @@ class Power:
         )
 
         #  Number of primary heat exchangers
-        # heat_transport_variables.n_primary_heat_exchangers = math.ceil(
-        #     heat_transport_variables.p_plant_primary_heat_mw / 1000.0e0
-        # )
-        heat_transport_variables.p_plant_primary_heat_mw = 300
-        heat_transport_variables.n_primary_heat_exchangers = 1
+        heat_transport_variables.n_primary_heat_exchangers = math.ceil(
+            heat_transport_variables.p_plant_primary_heat_mw / 1000.0e0
+        )
 
     def calculate_cryo_loads(self) -> None:
         """
