@@ -377,7 +377,7 @@ class VmconBounded(Vmcon):
 def detect_steady_state(t, y, self):
     # Terminate integration when d/dts below tolerance (crosses 0)
     # TODO Only toleratnce on ne ATM
-    tol = 1.0e-3
+    tol = 5.0e-3
     d_dts = derivatives(t, y, self)
     return np.sqrt(d_dts[1] ** 2) - tol
 
@@ -396,24 +396,24 @@ def derivatives(t, y, self):
     ne = physics_variables.nd_plasma_electrons_vol_avg
     te = physics_variables.temp_plasma_electron_vol_avg_kev
     vol = physics_variables.vol_plasma
-    dte_dt = (2 / (3 * k * (ne + ni) * vol)) * (ppb / 1.602e-19)
-    dne_dt = fe
+    dte_dt = (2 / 3) * (1 / 1.602e-19) * ((ppb * 1e6 * vol) / ((ni + ne) * vol))
+    dne_dt = fe / vol
 
     print(f"t = {t}, te = {te}, ne = {ne}")
 
     # Scale back down to nondimensionalised values
     # TODO Iteration vars (te, ne) need to be in right order (same as scale)!
     # TODO Sort out scaling array
-    return np.array([dte_dt, dne_dt]) * self.scaling[:2]
+    return np.array([dte_dt, dne_dt]) * self.t0 * self.scaling[:2]
 
 
 class SolveIVP(_Solver):
     # Nondimensionalisation
-    t0 = 1.25e-4
+    t0 = 2.0e2
 
     def solve(self) -> int:
         initial_values = self.x_0
-        time_span = np.array([0.0, 1.25e-4]) / self.t0
+        time_span = np.array([0.0, 1.0e3]) / self.t0
         # TODO Have to set attribute on function
         detect_steady_state.terminal = True
         self.scaling = np.array(numerics.scale)
@@ -431,7 +431,7 @@ class SolveIVP(_Solver):
         # TODO Sort :2
         print(f"{sol.y=}")
         y_real = sol.y / self.scaling[:2, np.newaxis]
-        # t_real = sol.t * self.t0
+        t_real = sol.t * self.t0
         # Final point
         print(f"{y_real=}")
         sol_vec = sol.y[:, -1]
