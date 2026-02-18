@@ -360,6 +360,7 @@ class SolveIVP(_Solver):
         # err == 1 for successful solve (termination event)
         if sol.status != 1:
             print(f"fsolve error code {sol.status}: {sol.message}")
+            raise Exception(f"solve_ivp failed: {sol.message}")
         self.info = sol.status
         # No objective function
         self.objf = None
@@ -433,6 +434,7 @@ class FSolve(_Solver):
         # err == 1 for successful solve
         if err != 1:
             print(f"fsolve error code {err}: {msg}")
+            raise Exception(f"fsolve failed: {msg}")
         self.info = err
         # No objective function
         self.objf = None
