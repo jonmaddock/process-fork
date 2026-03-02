@@ -3356,10 +3356,10 @@ class Physics:
         # ======================================================================
 
         # Sum of Zi.ni for all impurity ions (those with charge > helium)
-        znimp = 0.0
+        physics_variables.znimp = 0.0
         for imp in range(impurity_radiation_module.N_IMPURITIES):
             if impurity_radiation_module.impurity_arr_z[imp] > 2:
-                znimp += impurity_radiation.zav_of_te(
+                physics_variables.znimp += impurity_radiation.zav_of_te(
                     imp, np.array([physics_variables.temp_plasma_electron_vol_avg_kev])
                 ).squeeze() * (
                     impurity_radiation_module.f_nd_impurity_electron_array[imp]
@@ -3370,16 +3370,16 @@ class Physics:
 
         # Fuel portion - conserve charge neutrality
         # znfuel is the sum of Zi.ni for the three fuel ions
-        znfuel = (
+        physics_variables.znfuel = (
             physics_variables.nd_plasma_electrons_vol_avg
             - 2.0 * physics_variables.nd_plasma_alphas_vol_avg
             - physics_variables.nd_plasma_protons_vol_avg
             - physics_variables.nd_beam_ions
-            - znimp
+            - physics_variables.znimp
         )
         # Can occur during solution: catch early instead of becoming a
         # confusing bootstrap current error
-        if znfuel < 0.0:
+        if physics_variables.znfuel < 0.0:
             raise ValueError("znfuel is negative")
 
         # ======================================================================
@@ -3387,7 +3387,7 @@ class Physics:
         # Fuel ion density, nd_plasma_fuel_ions_vol_avg
         # For D-T-He3 mix, nd_plasma_fuel_ions_vol_avg = nD + nT + nHe3, while znfuel = nD + nT + 2*nHe3
         # So nd_plasma_fuel_ions_vol_avg = znfuel - nHe3 = znfuel - f_plasma_fuel_helium3*nd_plasma_fuel_ions_vol_avg
-        physics_variables.nd_plasma_fuel_ions_vol_avg = znfuel / (
+        physics_variables.nd_plasma_fuel_ions_vol_avg = physics_variables.znfuel / (
             1.0 + physics_variables.f_plasma_fuel_helium3
         )
 
