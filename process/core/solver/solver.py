@@ -317,7 +317,7 @@ def detect_steady_state(t, y, self):
     # TODO Only toleratnce on ne ATM
     tol = 5.0e-3
     d_dts = derivatives(t, y, self)
-    return np.sqrt(d_dts[1] ** 2) - tol
+    return np.sqrt(d_dts[0] ** 2 + d_dts[1] ** 2) - tol
 
 
 def derivatives(t, y, self):
