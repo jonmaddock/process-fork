@@ -1224,10 +1224,10 @@ class Physics(Model):
         # ======================================================================
 
         # Sum of Zi.ni for all impurity ions (those with charge > helium)
-        znimp = 0.0
+        self.data.physics.znimp = 0.0
         for imp in range(N_IMPURITIES):
             if self.data.impurity_radiation.impurity_arr_z[imp] > 2:
-                znimp += impurity_radiation.zav_of_te(
+                self.data.physics.znimp += impurity_radiation.zav_of_te(
                     imp,
                     np.array([self.data.physics.temp_plasma_electron_vol_avg_kev]),
                     self.data,
@@ -1240,17 +1240,17 @@ class Physics(Model):
 
         # Fuel portion - conserve charge neutrality
         # znfuel is the sum of Zi.ni for the three fuel ions
-        znfuel = (
+        self.data.physics.znfuel = (
             self.data.physics.nd_plasma_electrons_vol_avg
             - 2.0 * self.data.physics.nd_plasma_alphas_thermal_vol_avg
             - self.data.physics.nd_plasma_protons_vol_avg
             - self.data.physics.nd_beam_ions
-            - znimp
+            - self.data.physics.znimp
         )
 
         # Can occur during solution: catch early instead of becoming a
         # confusing bootstrap current error
-        if znfuel < 0.0:
+        if self.data.physics.znfuel < 0.0:
             raise ValueError("znfuel is negative")
 
         # ======================================================================
@@ -1260,7 +1260,7 @@ class Physics(Model):
         # = nD + nT + 2*nHe3
         # So nd_plasma_fuel_ions_vol_avg = znfuel - nHe3 = znfuel
         # - f_plasma_fuel_helium3*nd_plasma_fuel_ions_vol_avg
-        self.data.physics.nd_plasma_fuel_ions_vol_avg = znfuel / (
+        self.data.physics.nd_plasma_fuel_ions_vol_avg = self.data.physics.znfuel / (
             1.0 + self.data.physics.f_plasma_fuel_helium3
         )
 

@@ -670,6 +670,10 @@ class PhysicsData:
     gradient_length_te: float = None
     """Max. normalised gradient length in el. temperature (i_plasma_pedestal==0 only)"""
 
+    znfuel: float = None
+
+    znimp: float = None
+
     beta_poloidal_eps_max: float = 1.38
     """maximum (eps*beta_poloidal) (`constraint equation 6`). Note: revised issue #346
     "Operation at the tokamak equilibrium poloidal beta-limit in TFTR", 1992 Nucl. Fusion 32 1468
