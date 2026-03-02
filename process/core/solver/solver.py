@@ -383,16 +383,46 @@ def detect_steady_state(t, y, self):
     return np.sqrt(d_dts[0] ** 2 + d_dts[1] ** 2) - tol
 
 
+PRE_IVP_EVALUATIONS_OUTPUT_PATH = "pre_ivp_evaluations.csv"
+IVP_EVALUATIONS_OUTPUT_PATH = "ivp_evaluations.csv"
+IVP_ITERATIONS_OUTPUT_PATH = "ivp_iterations.csv"
+
+
 def derivatives(t, y, self):
+    # Normalised debugging df (before model evaluation)
+    # data = {"t": [t], "te": [y[0] / self.scaling[0]], "ne": [y[1] / self.scaling[1]]}
     # Evaluate PPB and Fuel Equilibrium
     # fcnvmc1 scales up to real values
     print(f"Normalised values = {y}")
-    _, self.conf = self.evaluators.fcnvmc1(y.shape[0], self.m, y, 0)
+    try:
+        _, self.conf = self.evaluators.fcnvmc1(y.shape[0], self.m, y, 0)
+    finally:
+        # Writes even if models throw exception
+        # Only write a header when the file is first created
+        znalpha = 2.0 * physics_variables.nd_plasma_alphas_vol_avg
+        data = {
+            "t": [t],
+            "te": [y[0] / self.scaling[0]],
+            "ne": [y[1] / self.scaling[1]],
+            "znfuel": [physics_variables.znfuel],
+            "znalpha": [znalpha],
+            "np": [physics_variables.nd_plasma_protons_vol_avg],
+            "nbeam": [physics_variables.nd_beam_ions],
+            "znimp": [physics_variables.znimp],
+        }
+        # Debug df for all model evaluations
+        pd.DataFrame(data).to_csv(
+            PRE_IVP_EVALUATIONS_OUTPUT_PATH,
+            mode="a",
+            header=not os.path.exists(PRE_IVP_EVALUATIONS_OUTPUT_PATH),
+            index=False,
+            float_format="%.9e",
+        )
+
     # Need absolute constraint residuals
     ppb = constraints.constraint_equation_2().constraint_error
     fe = constraints.constraint_equation_93().constraint_error
 
-    k = 1.380649e-23
     ni = physics_variables.nd_plasma_ions_total_vol_avg
     ne = physics_variables.nd_plasma_electrons_vol_avg
     te = physics_variables.temp_plasma_electron_vol_avg_kev
@@ -413,6 +443,17 @@ def derivatives(t, y, self):
 
     print(f"t = {t}, te = {te}, ne = {ne}")
 
+    # Debugging df including derivatives
+    data = {"t": [t], "te": [te], "ne": [ne], "dte_dt": [dte_dt], "dne_dt": [dne_dt]}
+    # Only write a header when the file is first created
+    pd.DataFrame(data).to_csv(
+        IVP_EVALUATIONS_OUTPUT_PATH,
+        mode="a",
+        header=not os.path.exists(IVP_EVALUATIONS_OUTPUT_PATH),
+        index=False,
+        float_format="%.9e",
+    )
+
     # Scale back down to nondimensionalised values
     # TODO Iteration vars (te, ne) need to be in right order (same as scale)!
     # TODO Sort out scaling array
@@ -424,6 +465,14 @@ class SolveIVP(_Solver):
     t0 = 2.0e2
 
     def solve(self) -> int:
+        # log_path = "ivp_iterations.log"
+        try:
+            Path(IVP_ITERATIONS_OUTPUT_PATH).unlink()
+            Path(PRE_IVP_EVALUATIONS_OUTPUT_PATH).unlink()
+            Path(IVP_ITERATIONS_OUTPUT_PATH).unlink()
+        except:
+            pass
+
         initial_values = self.x_0
         time_span = np.array([0.0, 1.0e3]) / self.t0
         # TODO Have to set attribute on function
@@ -451,6 +500,16 @@ class SolveIVP(_Solver):
         print(f"Equilibrium values = [{sol_vec_real[0]}, {sol_vec_real[1]}]")
         print(sol.message)
 
+        # Debugging df of actual solution timesteps
+        data = {"t": t_real[:], "te": y_real[0, :], "ne": y_real[1, :]}
+        # Only write a header when the file is first created
+        pd.DataFrame(data).to_csv(
+            IVP_ITERATIONS_OUTPUT_PATH,
+            mode="a",
+            header=not os.path.exists(IVP_ITERATIONS_OUTPUT_PATH),
+            index=False,
+            float_format="%.9e",
+        )
         # Evaluate equality and inequality constraints at equality-satisfying solution
         # (or at last iteration of x if solution not found)
         _, self.conf = self.evaluators.fcnvmc1(sol_vec.shape[0], self.m, sol_vec, 0)
@@ -471,6 +530,7 @@ class FSolve(_Solver):
 
     global fsolve_con_eval_count
     fsolve_con_eval_count = 0
+    FSOLVE_ITERATIONS_PATH = "iterations.csv"
 
     def evaluate_eq_cons(self, x: np.ndarray) -> np.ndarray:
         """Evaluate equality constraints.
@@ -497,12 +557,11 @@ class FSolve(_Solver):
             "ne": [self.data.physics.nd_plasma_electrons_vol_avg],
             "te": [self.data.physics.temp_plasma_electron_vol_avg_kev],
         }
-        output_path = "iterations.csv"
         # Only write a header when the file is first created
         pd.DataFrame(data).to_csv(
-            output_path,
+            self.FSOLVE_ITERATIONS_PATH,
             mode="a",
-            header=not os.path.exists(output_path),
+            header=not os.path.exists(self.FSOLVE_ITERATIONS_PATH),
             index=False,
         )
 
@@ -523,6 +582,11 @@ class FSolve(_Solver):
         int
             solver error code
         """
+        try:
+            Path(self.FSOLVE_ITERATIONS_PATH).unlink()
+        except:
+            pass
+
         print("Solving equality constraints using fsolve")
         self.x, _info, err, msg = fsolve(
             self.evaluate_eq_cons, self.x_0, full_output=True, factor=0.1
