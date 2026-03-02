@@ -27,6 +27,9 @@ from process.exceptions import ProcessValueError
 from process.iteration_variables import set_scaled_iteration_variable
 from scipy.integrate import solve_ivp
 from process import constraints
+from pathlib import Path
+import process.data_structure.impurity_radiation_module as irm
+import process.impurity_radiation as impurity_radiation
 
 
 logger = logging.getLogger(__name__)
@@ -310,8 +313,23 @@ def derivatives(t, y, self):
     ne = physics_variables.nd_plasma_electrons_vol_avg
     te = physics_variables.temp_plasma_electron_vol_avg_kev
     vol = physics_variables.vol_plasma
-    dte_dt = (2 / 3) * (1 / 1.602e-19) * ((ppb * 1e6 * vol) / ((ni + ne) * vol))
-    dne_dt = fe / vol
+    # In keV
+    dte_dt = (
+        (2 / 3) * (1 / 1.602e-19) * ((ppb * 1e6 * vol) / ((ni + ne) * vol))
+    ) * 1e-3
+    zimp = 0.0
+    for imp in range(irm.N_IMPURITIES):
+        if irm.impurity_arr_z[imp] > 2:
+            zimp += (
+                impurity_radiation.zav_of_te(
+                    imp, np.array([physics_variables.temp_plasma_electron_vol_avg_kev])
+                ).squeeze()
+                * (irm.f_nd_impurity_electron_array[imp])
+            )
+    f_alpha = physics_variables.nd_plasma_alphas_vol_avg / ne
+    dne_dt = (fe / vol) / (
+        1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha
+    )
 
     print(f"t = {t}, te = {te}, ne = {ne}")
 
