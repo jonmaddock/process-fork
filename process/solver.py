@@ -35,6 +35,7 @@ from termcolor import colored
 
 
 logger = logging.getLogger(__name__)
+DEBUG_DATAFRAME_OUTPUT = False
 
 
 class _Solver(ABC):
@@ -307,8 +308,8 @@ def detect_steady_state(
 # Output paths for evaluations and iterations of solvers: debug only
 IVP_EVALUATIONS_OUTPUT_PATH = "ivp_evaluations.csv"
 IVP_ITERATIONS_OUTPUT_PATH = "ivp_iterations.csv"
-RESIDUAL_OPT_ITERATIONS_OUTPUT_PATH = "res_opt_iterations.csv"
 RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH = "res_opt_evaluations.csv"
+RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH = "res_opt_obj_evaluations.csv"
 
 
 def derivatives(t, y, self, optimiser=False):
@@ -349,32 +350,33 @@ def derivatives(t, y, self, optimiser=False):
             1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha
         )
 
-        # Debugging df including derivatives
-        data = {
-            "t": [t],
-            "te": [te],
-            "ne": [ne],
-            "dte_dt": [dte_dt],
-            "dne_dt": [dne_dt],
-        }
-        # Write IVP and residual optimiser evaluations to 2 different output files
-        # Only write a header when the file is first created
-        if optimiser:
-            pd.DataFrame(data).to_csv(
-                RESIDUAL_OPT_ITERATIONS_OUTPUT_PATH,
-                mode="a",
-                header=not os.path.exists(RESIDUAL_OPT_ITERATIONS_OUTPUT_PATH),
-                index=False,
-                float_format="%.9e",
-            )
-        else:
-            pd.DataFrame(data).to_csv(
-                IVP_EVALUATIONS_OUTPUT_PATH,
-                mode="a",
-                header=not os.path.exists(IVP_EVALUATIONS_OUTPUT_PATH),
-                index=False,
-                float_format="%.9e",
-            )
+        if DEBUG_DATAFRAME_OUTPUT:
+            # Debugging df including derivatives
+            data = {
+                "t": [t],
+                "te": [te],
+                "ne": [ne],
+                "dte_dt": [dte_dt],
+                "dne_dt": [dne_dt],
+            }
+            # Write IVP and residual optimiser evaluations to 2 different output files
+            # Only write a header when the file is first created
+            if optimiser:
+                pd.DataFrame(data).to_csv(
+                    RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH,
+                    mode="a",
+                    header=not os.path.exists(RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH),
+                    index=False,
+                    float_format="%.9e",
+                )
+            else:
+                pd.DataFrame(data).to_csv(
+                    IVP_EVALUATIONS_OUTPUT_PATH,
+                    mode="a",
+                    header=not os.path.exists(IVP_EVALUATIONS_OUTPUT_PATH),
+                    index=False,
+                    float_format="%.9e",
+                )
 
     # If exception thrown (usually from models), will be re-raised here after finally statement
     # Otherwise, return derivatives
@@ -392,21 +394,24 @@ def residual(x, self):
     # Return sum of squares of normalised derivatives
     # TODO Sort normalisation
     res = np.sum(dx_dt**2)
-    # Debug data
-    data = {
-        "te": [x[0]],
-        "ne": [x[1]],
-        "dte_dt": [dx_dt[0]],
-        "dne_dt": [dx_dt[1]],
-        "res": [res],
-    }
-    pd.DataFrame(data).to_csv(
-        RES_EVALUATIONS_OUTPUT_PATH,
-        mode="a",
-        header=not os.path.exists(RES_EVALUATIONS_OUTPUT_PATH),
-        index=False,
-        float_format="%.9e",
-    )
+    if DEBUG_DATAFRAME_OUTPUT:
+        # Debug data
+        data = {
+            "te": [x[0]],
+            "ne": [x[1]],
+            "dte_dt": [dx_dt[0]],
+            "dne_dt": [dx_dt[1]],
+            "res": [res],
+        }
+        pd.DataFrame(data).to_csv(
+            RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH,
+            mode="a",
+            header=not os.path.exists(
+                RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH
+            ),
+            index=False,
+            float_format="%.9e",
+        )
     return res
 
 
@@ -416,9 +421,9 @@ class SolveIVP(_Solver):
 
     def solve(self) -> int:
         try:
-            Path(RESIDUAL_OPT_ITERATIONS_OUTPUT_PATH).unlink()
             Path(RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH).unlink()
-            Path(IVP_ITERATIONS_OUTPUT_PATH).unlink()
+            Path(RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH).unlink()
+            Path(IVP_EVALUATIONS_OUTPUT_PATH).unlink()
             Path(IVP_ITERATIONS_OUTPUT_PATH).unlink()
         except:
             pass
@@ -461,15 +466,16 @@ class SolveIVP(_Solver):
             print(f"Equilibrium values = [{x_sol_real[0]}, {x_sol_real[1]}]")
             print(sol_result.message)
 
-            # Debugging df of actual solution timesteps
-            data = {"t": t_real[:], "te": y_real[0, :], "ne": y_real[1, :]}
-            pd.DataFrame(data).to_csv(
-                IVP_ITERATIONS_OUTPUT_PATH,
-                mode="a",
-                header=not os.path.exists(IVP_ITERATIONS_OUTPUT_PATH),
-                index=False,
-                float_format="%.9e",
-            )
+            if DEBUG_DATAFRAME_OUTPUT:
+                # Debugging df of actual solution timesteps
+                data = {"t": t_real[:], "te": y_real[0, :], "ne": y_real[1, :]}
+                pd.DataFrame(data).to_csv(
+                    IVP_ITERATIONS_OUTPUT_PATH,
+                    mode="a",
+                    header=not os.path.exists(IVP_ITERATIONS_OUTPUT_PATH),
+                    index=False,
+                    float_format="%.9e",
+                )
             # Evaluate equality and inequality constraints at equality-satisfying solution
             # (or at last iteration of x if solution not found)
             _, self.conf = self.evaluators.fcnvmc1(x_sol.shape[0], self.m, x_sol, 0)
@@ -558,17 +564,18 @@ class FSolve(_Solver):
         # Write iteration parameter vector to CSV
         # Scale opt params up to real values before writing values
         set_scaled_iteration_variable(x, len(x))
-        data = {
-            "ne": [physics_variables.nd_plasma_electrons_vol_avg],
-            "te": [physics_variables.temp_plasma_electron_vol_avg_kev],
-        }
-        # Only write a header when the file is first created
-        pd.DataFrame(data).to_csv(
-            self.FSOLVE_ITERATIONS_PATH,
-            mode="a",
-            header=not os.path.exists(self.FSOLVE_ITERATIONS_PATH),
-            index=False,
-        )
+        if DEBUG_DATAFRAME_OUTPUT:
+            data = {
+                "ne": [physics_variables.nd_plasma_electrons_vol_avg],
+                "te": [physics_variables.temp_plasma_electron_vol_avg_kev],
+            }
+            # Only write a header when the file is first created
+            pd.DataFrame(data).to_csv(
+                self.FSOLVE_ITERATIONS_PATH,
+                mode="a",
+                header=not os.path.exists(self.FSOLVE_ITERATIONS_PATH),
+                index=False,
+            )
 
         # Evaluate equality constraints only
         # Calling fcnvmc1 scales the normalised x back up to absolute optimisation
