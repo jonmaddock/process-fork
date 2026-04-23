@@ -40,6 +40,7 @@ setup_kwargs = {
         "seaborn>=0.12.2",
         "tabulate",
         "nlopt",
+        "termcolor",
     ],
     "extras_require": {
         "test": ["pytest>=5.4.1", "requests>=2.30", "testbook>=0.4"],
