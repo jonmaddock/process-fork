@@ -28,6 +28,9 @@ from process.core.solver.iteration_variables import set_scaled_iteration_variabl
 from scipy.integrate import solve_ivp
 from process.core.solver import constraints
 from process.models.physics import impurity_radiation
+from pathlib import Path
+from scipy.optimize import minimize
+from termcolor import colored
 
 
 logger = logging.getLogger(__name__)
@@ -312,89 +315,121 @@ class VmconBounded(Vmcon):
 
 # TODO Have to define as functions (not methods on SolveIVP) as terminal event
 # requires attribute setting on function: improve!
-def detect_steady_state(t, y, self):
+def detect_steady_state(
+    t,
+    y,
+    self,
+):
     # Terminate integration when d/dts below tolerance (crosses 0)
-    # TODO Only toleratnce on ne ATM
     tol = 5.0e-3
     d_dts = derivatives(t, y, self)
     return np.sqrt(d_dts[0] ** 2 + d_dts[1] ** 2) - tol
 
 
-PRE_IVP_EVALUATIONS_OUTPUT_PATH = "pre_ivp_evaluations.csv"
+# Output paths for evaluations and iterations of solvers: debug only
 IVP_EVALUATIONS_OUTPUT_PATH = "ivp_evaluations.csv"
 IVP_ITERATIONS_OUTPUT_PATH = "ivp_iterations.csv"
+RESIDUAL_OPT_ITERATIONS_OUTPUT_PATH = "res_opt_iterations.csv"
+RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH = "res_opt_evaluations.csv"
 
 
-def derivatives(t, y, self):
-    # Normalised debugging df (before model evaluation)
-    # data = {"t": [t], "te": [y[0] / self.scaling[0]], "ne": [y[1] / self.scaling[1]]}
-    # Evaluate PPB and Fuel Equilibrium
-    # fcnvmc1 scales up to real values
-    print(f"Normalised values = {y}")
+def derivatives(t, y, self, optimiser=False):
+    # Evaluate plasma power balance and fuel equilibrium
+    # y is normalised values: fcnvmc1() scales up to real values
+    # print(f"Normalised values = {y}")
     try:
+        # Model exception may be raised
         _, self.conf = self.evaluators.fcnvmc1(y.shape[0], self.m, y, 0)
     finally:
-        # Writes even if models throw exception
-        # Only write a header when the file is first created
-        znalpha = 2.0 * physics_variables.nd_plasma_alphas_vol_avg
-        data = {
-            "t": [t],
-            "te": [y[0] / self.scaling[0]],
-            "ne": [y[1] / self.scaling[1]],
-            "znfuel": [physics_variables.znfuel],
-            "znalpha": [znalpha],
-            "np": [physics_variables.nd_plasma_protons_vol_avg],
-            "nbeam": [physics_variables.nd_beam_ions],
-            "znimp": [physics_variables.znimp],
-        }
-        # Debug df for all model evaluations
-        pd.DataFrame(data).to_csv(
-            PRE_IVP_EVALUATIONS_OUTPUT_PATH,
-            mode="a",
-            header=not os.path.exists(PRE_IVP_EVALUATIONS_OUTPUT_PATH),
-            index=False,
-            float_format="%.9e",
+        # Writes debug df even if models throw exception
+
+        # Need absolute constraint residuals (real values)
+        ppb = constraints.constraint_equation_2().constraint_error
+        fe = constraints.constraint_equation_93().constraint_error
+
+        ni = self.data.physics.nd_plasma_ions_total_vol_avg
+        ne = self.data.physics.nd_plasma_electrons_vol_avg
+        te = self.data.physics.temp_plasma_electron_vol_avg_kev
+        vol = self.data.physics.vol_plasma
+        # dTe/dt keV s^-1
+        dte_dt = (
+            (2 / 3) * (1 / 1.602e-19) * ((ppb * 1e6 * vol) / ((ni + ne) * vol))
+        ) * 1e-3
+        zimp = 0.0
+        for imp in range(self.data.impurity_radiation.N_IMPURITIES):
+            if self.data.impurity_radiation.impurity_arr_z[imp] > 2:
+                zimp += (
+                    impurity_radiation.zav_of_te(
+                        imp,
+                        np.array([self.data.physics.temp_plasma_electron_vol_avg_kev]),
+                    ).squeeze()
+                    * (self.data.impurity_radiation.f_nd_impurity_electron_array[imp])
+                )
+        f_alpha = self.data.physics.nd_plasma_alphas_vol_avg / ne
+        # dne/dt m^-3 s^-1
+        dne_dt = (fe / vol) / (
+            1 - self.data.physics.f_nd_beam_electron - zimp - 2 * f_alpha
         )
 
-    # Need absolute constraint residuals
-    ppb = constraints.constraint_equation_2().constraint_error
-    fe = constraints.constraint_equation_93().constraint_error
-
-    ni = physics_variables.nd_plasma_ions_total_vol_avg
-    ne = physics_variables.nd_plasma_electrons_vol_avg
-    te = physics_variables.temp_plasma_electron_vol_avg_kev
-    vol = physics_variables.vol_plasma
-    # In keV
-    dte_dt = ((2 / 3) * (1 / 1.602e-19) * ((ppb * 1e6 * vol) / ((ni + ne) * vol))) * 1e-3
-    zimp = 0.0
-    for imp in range(impurity_radiation.N_IMPURITIES):
-        if impurity_radiation.impurity_arr_z[imp] > 2:
-            zimp += (
-                impurity_radiation.zav_of_te(
-                    imp, np.array([physics_variables.temp_plasma_electron_vol_avg_kev])
-                ).squeeze()
-                * (impurity_radiation.f_nd_impurity_electron_array[imp])
+        # Debugging df including derivatives
+        data = {
+            "t": [t],
+            "te": [te],
+            "ne": [ne],
+            "dte_dt": [dte_dt],
+            "dne_dt": [dne_dt],
+        }
+        # Write IVP and residual optimiser evaluations to 2 different output files
+        # Only write a header when the file is first created
+        if optimiser:
+            pd.DataFrame(data).to_csv(
+                RESIDUAL_OPT_ITERATIONS_OUTPUT_PATH,
+                mode="a",
+                header=not os.path.exists(RESIDUAL_OPT_ITERATIONS_OUTPUT_PATH),
+                index=False,
+                float_format="%.9e",
             )
-    f_alpha = physics_variables.nd_plasma_alphas_vol_avg / ne
-    dne_dt = (fe / vol) / (1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha)
+        else:
+            pd.DataFrame(data).to_csv(
+                IVP_EVALUATIONS_OUTPUT_PATH,
+                mode="a",
+                header=not os.path.exists(IVP_EVALUATIONS_OUTPUT_PATH),
+                index=False,
+                float_format="%.9e",
+            )
 
-    print(f"t = {t}, te = {te}, ne = {ne}")
+    # If exception thrown (usually from models), will be re-raised here after finally statement
+    # Otherwise, return derivatives
+    # Scale derivatives back down to normalised (nondimensionalised) values
+    # TODO Iteration vars (te, ne) need to be in right order (same as scaling)!
+    # TODO Sort out scaling array
+    # TODO Check role of t0 here
+    return np.array([dte_dt, dne_dt]) * self.t0 * self.scaling[:2]
 
-    # Debugging df including derivatives
-    data = {"t": [t], "te": [te], "ne": [ne], "dte_dt": [dte_dt], "dne_dt": [dne_dt]}
-    # Only write a header when the file is first created
+
+def residual(x, self):
+    # x is normalised vector
+    dx_dt = derivatives(None, x, self, optimiser=True)
+
+    # Return sum of squares of normalised derivatives
+    # TODO Sort normalisation
+    res = np.sum(dx_dt**2)
+    # Debug data
+    data = {
+        "te": [x[0]],
+        "ne": [x[1]],
+        "dte_dt": [dx_dt[0]],
+        "dne_dt": [dx_dt[1]],
+        "res": [res],
+    }
     pd.DataFrame(data).to_csv(
-        IVP_EVALUATIONS_OUTPUT_PATH,
+        RES_EVALUATIONS_OUTPUT_PATH,
         mode="a",
-        header=not os.path.exists(IVP_EVALUATIONS_OUTPUT_PATH),
+        header=not os.path.exists(RES_EVALUATIONS_OUTPUT_PATH),
         index=False,
         float_format="%.9e",
     )
-
-    # Scale back down to nondimensionalised values
-    # TODO Iteration vars (te, ne) need to be in right order (same as scale)!
-    # TODO Sort out scaling array
-    return np.array([dte_dt, dne_dt]) * self.t0 * self.scaling[:2]
+    return res
 
 
 class SolveIVP(_Solver):
@@ -402,63 +437,119 @@ class SolveIVP(_Solver):
     t0 = 2.0e2
 
     def solve(self) -> int:
-        # log_path = "ivp_iterations.log"
         try:
+            Path(RESIDUAL_OPT_ITERATIONS_OUTPUT_PATH).unlink()
+            Path(RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH).unlink()
             Path(IVP_ITERATIONS_OUTPUT_PATH).unlink()
-            Path(PRE_IVP_EVALUATIONS_OUTPUT_PATH).unlink()
             Path(IVP_ITERATIONS_OUTPUT_PATH).unlink()
         except:
             pass
 
         initial_values = self.x_0
         time_span = np.array([0.0, 1.0e3]) / self.t0
-        # TODO Have to set attribute on function
+        # TODO Have to set attribute on function (scipy)
         detect_steady_state.terminal = True
         self.scaling = np.array(numerics.scale)
 
         # Radau required due to "stiffness": very different timescales of dte/dt and dne/dt
-        sol = solve_ivp(
-            fun=derivatives,
-            args=(self,),
-            t_span=time_span,
-            y0=initial_values,
-            method="Radau",
-            events=detect_steady_state,
-        )
-        print(f"{initial_values = }")
-        # TODO Sort :2
-        print(f"{sol.y=}")
-        y_real = sol.y / self.scaling[:2, np.newaxis]
-        t_real = sol.t * self.t0
-        # Final point
-        print(f"{y_real=}")
-        sol_vec = sol.y[:, -1]
-        sol_vec_real = y_real[:, -1]
-        print(f"Equilibrium values = [{sol_vec_real[0]}, {sol_vec_real[1]}]")
-        print(sol.message)
+        sol_result = None
+        try:
+            sol_result = solve_ivp(
+                fun=derivatives,
+                args=(self,),
+                t_span=time_span,
+                y0=initial_values,
+                method="Radau",
+                events=detect_steady_state,
+            )
+            print(
+                colored(
+                    f"IVP: no exceptions. solve_ivp error code {sol_result.status}: {sol_result.message}",
+                    "green",
+                )
+            )
+        except ValueError as e:
+            # Model error, probably caused by diverging parameter vector
+            print(colored(f"IVP exception. Model error: {e}", "red"))
 
-        # Debugging df of actual solution timesteps
-        data = {"t": t_real[:], "te": y_real[0, :], "ne": y_real[1, :]}
-        # Only write a header when the file is first created
-        pd.DataFrame(data).to_csv(
-            IVP_ITERATIONS_OUTPUT_PATH,
-            mode="a",
-            header=not os.path.exists(IVP_ITERATIONS_OUTPUT_PATH),
-            index=False,
-            float_format="%.9e",
-        )
-        # Evaluate equality and inequality constraints at equality-satisfying solution
-        # (or at last iteration of x if solution not found)
-        _, self.conf = self.evaluators.fcnvmc1(sol_vec.shape[0], self.m, sol_vec, 0)
+        if sol_result and sol_result.status == 1:
+            # IVP converged: termination event
+            # TODO Sort :2 in scaling array and Te, ne ordering requirement
+            y_real = sol_result.y / self.scaling[:2, np.newaxis]
+            t_real = sol_result.t * self.t0
+            # Final point
+            x_sol = sol_result.y[:, -1]
+            x_sol_real = y_real[:, -1]
+            print(f"Equilibrium values = [{x_sol_real[0]}, {x_sol_real[1]}]")
+            print(sol_result.message)
 
-        # err == 1 for successful solve (termination event)
-        if sol.status != 1:
-            print(f"fsolve error code {sol.status}: {sol.message}")
-            raise Exception(f"solve_ivp failed: {sol.message}")
-        self.info = sol.status
-        # No objective function
+            # Debugging df of actual solution timesteps
+            data = {"t": t_real[:], "te": y_real[0, :], "ne": y_real[1, :]}
+            pd.DataFrame(data).to_csv(
+                IVP_ITERATIONS_OUTPUT_PATH,
+                mode="a",
+                header=not os.path.exists(IVP_ITERATIONS_OUTPUT_PATH),
+                index=False,
+                float_format="%.9e",
+            )
+            # Evaluate equality and inequality constraints at equality-satisfying solution
+            # (or at last iteration of x if solution not found)
+            _, self.conf = self.evaluators.fcnvmc1(x_sol.shape[0], self.m, x_sol, 0)
+            # Record converged status and solution vector
+            self.info = 1
+            self.x = x_sol
+        else:
+            # IVP didn't converge: failed to find equilibrium solution
+            # 0: Reached end of time interval without converging
+            # -1: Solver error
+            # Or model exception, probably caused by diverging solution
+            # Instead, run optimiser to find minimum residual of derivatives
+
+            # Reset state: try flushing out model errors from likely previous bad IVP
+            # state: this works, otherwise get negative znfuel again immediately
+            # TODO Clearly needs improvement/justification
+            physics_variables.fusden_alpha_total = 0.0
+            physics_variables.nd_plasma_alphas_vol_avg = 0.0
+            for _ in range(5):
+                try:
+                    _, _ = self.evaluators.fcnvmc1(
+                        initial_values.shape[0], self.m, initial_values, 0
+                    )
+                    break
+                except ValueError:
+                    pass
+
+            # Model exceptions here are now not caught
+            # Residual optimisation will raise exception on model exception or
+            # optimiser failure
+            result = minimize(
+                fun=residual,
+                x0=initial_values,
+                # TODO This is clearly not a great way of bounding the minimisation
+                # Bounds required to avoid huge steps and subsequent model errors
+                bounds=((0.5, 1.5), (0.5, 1.5)),
+                args=(self,),
+            )
+            if result.success:
+                # Residual minimised: calculate non-normalised residual
+                dx_dt = result.x / (self.t0 * self.scaling[:2])
+                res = np.sum(dx_dt**2)
+                # Record solution vector
+                self.x = result.x
+                print(colored("IVP failed, but residual found!", "green"))
+                # TODO Extract residual in output file
+                print(f"Residual = {res:.3e}")
+            else:
+                # No model exception, but residual optimiser failed
+                raise Exception(
+                    colored(f"Residual optimiser failed: {result.message}", "red")
+                )
+
+            # IVP didn't converge, but residual optmiser did
+            self.info = 2
+
+        # No objective function for IVP
         self.objf = None
-        self.x = sol_vec
         return self.info
 
 
