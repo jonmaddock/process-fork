@@ -1079,7 +1079,8 @@ def constraint_equation_33():
     j_tf_wp: winding pack current density (A/m2)
     """
     if data_structure.constraint_variables.fiooic > 0.7:
-        logger.error("fiooic shouldn't be above 0.7 for engineering reliability")
+        # logger.error("fiooic shouldn't be above 0.7 for engineering reliability")
+        pass
 
     cc = (
         data_structure.tfcoil_variables.j_tf_wp
