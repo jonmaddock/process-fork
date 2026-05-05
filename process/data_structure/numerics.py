@@ -546,6 +546,9 @@ class NumericsData:
     # other python utilities, so they cannot easily be changed.
 
     name_xc: list[str] = field(default_factory=lambda: [""] * IPNVARS)
+    derivative_rmse = 0.0
+    derivatives = np.array([0.0, 0.0])
+    derivatives_norm = np.array([0.0, 0.0])
 
     sqsumsq: float = 0.0
     """sqrt of the sum of the square of the constraint residuals"""
