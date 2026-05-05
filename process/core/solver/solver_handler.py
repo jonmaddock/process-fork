@@ -124,9 +124,13 @@ class SolverHandler:
         nums.sqsumsq = sum(r**2 for r in nums.rcm[: nums.n_equality_constraints]) ** 0.5
 
         process_output.oheadr(constants.NOUT, "Numerics")
-        s_type = (
-            "fsolve (evaluation)" if self.solver == "fsolve" else "VMCON (optimisation)"
-        )
+        s_type = None
+        if self.solver == "fsolve":
+            s_type = "fsolve (solution)"
+        elif self.solver == "solve_ivp":
+            s_type = "IVP (integration)"
+        else:
+            s_type = "VMCON (optimisation)"
         process_output.ocmmnt(
             constants.NOUT,
             f"PROCESS has performed a {s_type} run",
@@ -166,6 +170,32 @@ class SolverHandler:
                 print(string)
 
                 logger.warning(f"High final constraint residues. {nums.sqsumsq=}")
+
+        if ifail == -1:
+            # IVP solution diverged: extra output for derivative residuals
+            process_output.ocmmnt(constants.NOUT, "The IVP solution diverged.")
+            process_output.oheadr(
+                constants.IOTTY,
+                "IVP solution diverged. Derivative residuals calculated instead.",
+            )
+            process_output.ovarre(
+                constants.MFILE,
+                "RMSE of derivative residuals",
+                "residual_rmse",
+                self.data.numerics.derivative_rmse,
+            )
+            process_output.ovarre(
+                constants.MFILE,
+                "Temperature derivative",
+                "dte/dt",
+                self.data.numerics.derivatives[0],
+            )
+            process_output.ovarre(
+                constants.MFILE,
+                "Density derivative",
+                "dne/dt",
+                self.data.numerics.derivatives[1],
+            )
 
         for d, var, v in (
             (

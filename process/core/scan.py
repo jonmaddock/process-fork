@@ -243,7 +243,6 @@ class Scan:
         self.solver = solver
         self.data = data
         self.solver_handler = SolverHandler(models, solver, data)
-        self.run_scan()
 
     def run_scan(self):
         """Call a solver over a range of values of one of the variables.
@@ -258,6 +257,8 @@ class Scan:
         ProcessValueError
             isweep value greater than IPNSCNS
         """
+        # Set default in case of exception: ensure value always set
+        self.ifail = 0
         if self.data.scan.isweep == 0:
             # Solve single problem, rather than an array of problems (scan)
             # doopt() can also run just an evaluation
