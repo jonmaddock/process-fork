@@ -379,6 +379,15 @@ name_xc: list[str] = None
 sqsumsq: float = None
 """sqrt of the sum of the square of the constraint residuals"""
 
+derivative_rmse: float = None
+"""RMSE of the derivative residuals, in the event of a diverging IVP"""
+
+derivatives: list[float] = None
+"""Derivatives in IVP problem"""
+
+derivatives_norm: list[float] = None
+"""Normalised derivatives in IVP problem"""
+
 objf_name: str = None
 """Description of the objective function"""
 
@@ -472,6 +481,9 @@ def init_numerics():
     global lablxc
     global name_xc
     global sqsumsq
+    global derivative_rmse
+    global derivatives
+    global derivatives_norm
     global objf_name
     global norm_objf
     global epsfcn
@@ -631,6 +643,9 @@ def init_numerics():
     lablxc = [""] * ipnvars
 
     sqsumsq = 0.0
+    derivative_rmse = 0.0
+    derivatives = np.array([0.0, 0.0])
+    derivatives_norm = np.array([0.0, 0.0])
     objf_name = ""
     norm_objf = 0.0
     epsfcn = 1.0e-3

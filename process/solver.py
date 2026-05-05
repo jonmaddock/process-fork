@@ -419,6 +419,51 @@ class SolveIVP(_Solver):
     # Nondimensionalisation
     t0 = 2.0e2
 
+    def handle_converged_sol(self, sol_result):
+        # TODO Sort :2 in scaling array and Te, ne ordering requirement
+        y_real = sol_result.y / self.scaling[:2, np.newaxis]
+        t_real = sol_result.t * self.t0
+        # Final point
+        x_sol = sol_result.y[:, -1]
+        x_sol_real = y_real[:, -1]
+        print(f"Equilibrium values = [{x_sol_real[0]}, {x_sol_real[1]}]")
+        print(sol_result.message)
+
+        if DEBUG_DATAFRAME_OUTPUT:
+            # Debugging df of actual solution timesteps
+            data = {"t": t_real[:], "te": y_real[0, :], "ne": y_real[1, :]}
+            pd.DataFrame(data).to_csv(
+                IVP_ITERATIONS_OUTPUT_PATH,
+                mode="a",
+                header=not os.path.exists(IVP_ITERATIONS_OUTPUT_PATH),
+                index=False,
+                float_format="%.9e",
+            )
+        # Evaluate equality and inequality constraints at equality-satisfying solution
+        # (or at last iteration of x if solution not found)
+        _, self.conf = self.evaluators.fcnvmc1(x_sol.shape[0], self.m, x_sol, 0)
+        # Record converged status and solution vector
+        self.info = 1
+        self.x = x_sol
+
+    def handle_residual_sol(self, result):
+        # Residual minimised: calculate residual to return
+        # Real derivatives
+        dx_dt = result.x / (self.t0 * self.scaling[:2])
+        # Derivatives normalised by initial values only
+        dx_dt_norm = result.x / self.t0
+        # RMSE
+        res = np.sqrt(np.mean(dx_dt_norm**2))
+        # Record solution vector
+        self.x = result.x
+        print(colored("IVP failed, but residual found!", "green"))
+        print(f"{dx_dt_norm = }")
+        print(f"Residual = {res:.3e}")
+        # Set results that will be output in file
+        numerics.derivative_rmse = res
+        numerics.derivatives = dx_dt
+        numerics.derivatives_norm = dx_dt_norm
+
     def solve(self) -> int:
         try:
             Path(RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH).unlink()
@@ -457,80 +502,60 @@ class SolveIVP(_Solver):
 
         if sol_result and sol_result.status == 1:
             # IVP converged: termination event
-            # TODO Sort :2 in scaling array and Te, ne ordering requirement
-            y_real = sol_result.y / self.scaling[:2, np.newaxis]
-            t_real = sol_result.t * self.t0
-            # Final point
-            x_sol = sol_result.y[:, -1]
-            x_sol_real = y_real[:, -1]
-            print(f"Equilibrium values = [{x_sol_real[0]}, {x_sol_real[1]}]")
-            print(sol_result.message)
-
-            if DEBUG_DATAFRAME_OUTPUT:
-                # Debugging df of actual solution timesteps
-                data = {"t": t_real[:], "te": y_real[0, :], "ne": y_real[1, :]}
-                pd.DataFrame(data).to_csv(
-                    IVP_ITERATIONS_OUTPUT_PATH,
-                    mode="a",
-                    header=not os.path.exists(IVP_ITERATIONS_OUTPUT_PATH),
-                    index=False,
-                    float_format="%.9e",
-                )
-            # Evaluate equality and inequality constraints at equality-satisfying solution
-            # (or at last iteration of x if solution not found)
-            _, self.conf = self.evaluators.fcnvmc1(x_sol.shape[0], self.m, x_sol, 0)
-            # Record converged status and solution vector
-            self.info = 1
-            self.x = x_sol
+            self.handle_converged_sol(sol_result)
         else:
             # IVP didn't converge: failed to find equilibrium solution
-            # 0: Reached end of time interval without converging
-            # -1: Solver error
-            # Or model exception, probably caused by diverging solution
-            # Instead, run optimiser to find minimum residual of derivatives
-
-            # Reset state: try flushing out model errors from likely previous bad IVP
-            # state: this works, otherwise get negative znfuel again immediately
-            # TODO Clearly needs improvement/justification
-            physics_variables.fusden_alpha_total = 0.0
-            physics_variables.nd_plasma_alphas_vol_avg = 0.0
-            for _ in range(5):
-                try:
-                    _, _ = self.evaluators.fcnvmc1(
-                        initial_values.shape[0], self.m, initial_values, 0
-                    )
-                    break
-                except ValueError:
-                    pass
-
-            # Model exceptions here are now not caught
-            # Residual optimisation will raise exception on model exception or
-            # optimiser failure
-            result = minimize(
-                fun=residual,
-                x0=initial_values,
-                # TODO This is clearly not a great way of bounding the minimisation
-                # Bounds required to avoid huge steps and subsequent model errors
-                bounds=((0.5, 1.5), (0.5, 1.5)),
-                args=(self,),
-            )
-            if result.success:
-                # Residual minimised: calculate non-normalised residual
-                dx_dt = result.x / (self.t0 * self.scaling[:2])
-                res = np.sum(dx_dt**2)
-                # Record solution vector
-                self.x = result.x
-                print(colored("IVP failed, but residual found!", "green"))
-                # TODO Extract residual in output file
-                print(f"Residual = {res:.3e}")
+            # Actually may have converged, but didn't trigger termination criterion (didn't cross 0)
+            if (
+                sol_result
+                and sol_result.status == 0
+                and detect_steady_state(None, sol_result.y[:, -1], self) < 0
+            ):
+                # 0: Reached end of time interval without converging, but
+                # has actually converged
+                self.handle_converged_sol(sol_result)
             else:
-                # No model exception, but residual optimiser failed
-                raise Exception(
-                    colored(f"Residual optimiser failed: {result.message}", "red")
-                )
+                # -1: Solver error
+                # Or model exception, probably caused by diverging solution
+                # Instead, run optimiser to find minimum residual of derivatives
 
-            # IVP didn't converge, but residual optmiser did
-            self.info = 2
+                # Reset state: try flushing out model errors from likely previous bad IVP
+                # state: this works, otherwise get negative znfuel again immediately
+                # TODO Clearly needs improvement/justification
+                physics_variables.fusden_alpha_total = 0.0
+                physics_variables.nd_plasma_alphas_vol_avg = 0.0
+                for _ in range(5):
+                    try:
+                        _, _ = self.evaluators.fcnvmc1(
+                            initial_values.shape[0], self.m, initial_values, 0
+                        )
+                        break
+                    except ValueError:
+                        pass
+
+                # Model exceptions here are now not caught
+                # Residual optimisation will raise exception on model exception or
+                # optimiser failure
+                result = minimize(
+                    fun=residual,
+                    x0=initial_values,
+                    # TODO This is clearly not a great way of bounding the minimisation
+                    # Bounds required to avoid huge steps and subsequent model errors
+                    bounds=((0.5, 1.5), (0.5, 1.5)),
+                    args=(self,),
+                )
+                if result.success:
+                    self.handle_residual_sol(result)
+                else:
+                    # No model exception, but residual optimiser failed
+                    raise Exception(
+                        colored(f"Residual optimiser failed: {result.message}", "red")
+                    )
+                    # TODO Possible other self.info value?
+
+                # IVP didn't converge, but residual optmiser did
+                # TODO Check/change this return code: need to consider all solution modes
+                self.info = -1
 
         # No objective function for IVP
         self.objf = None

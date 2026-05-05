@@ -158,7 +158,6 @@ class Scan:
         self.models = models
         self.solver = solver
         self.solver_handler = SolverHandler(models, solver)
-        self.run_scan()
 
     def run_scan(self):
         """Call a solver over a range of values of one of the variables.
@@ -169,6 +168,8 @@ class Scan:
         each scan point, for plotting or other post-processing purposes.
         """
 
+        # Set default in case of exception: ensure value always set
+        self.ifail = 0
         if scan_variables.isweep == 0:
             # Solve single problem, rather than an array of problems (scan)
             # doopt() can also run just an evaluation
@@ -205,29 +206,23 @@ class Scan:
         numerics.sqsumsq = sum(r**2 for r in numerics.rcm[: numerics.neqns]) ** 0.5
 
         process_output.oheadr(constants.NOUT, "Numerics")
+        run_type = None
         if self.solver == "fsolve":
-            process_output.ocmmnt(
-                constants.NOUT, "PROCESS has performed an fsolve (evaluation) run."
-            )
+            run_type = "fsolve"
+        elif self.solver == "solve_ivp":
+            run_type = "IVP"
         else:
-            process_output.ocmmnt(
-                constants.NOUT, "PROCESS has performed a VMCON (optimisation) run."
-            )
-        if ifail != 1:
-            process_output.ovarin(constants.NOUT, "Error flag", "(ifail)", ifail)
-            process_output.oheadr(
-                constants.IOTTY, "PROCESS COULD NOT FIND A FEASIBLE SOLUTION"
-            )
-            process_output.oblnkl(constants.IOTTY)
-
-            logger.critical(f"Solver returns with ifail /= 1. {ifail=}")
-
-            # Error code handler for VMCON
-            if self.solver == "vmcon":
-                self.verror(ifail)
-            process_output.oblnkl(constants.NOUT)
-            process_output.oblnkl(constants.IOTTY)
-        else:
+            run_type = "VMCON (optimisation)"
+        process_output.ocmmnt(
+            constants.NOUT, f"PROCESS has performed a {run_type} run."
+        )
+        process_output.ovarre(
+            constants.MFILE,
+            "Solver error code",
+            "(ifail)",
+            ifail,
+        )
+        if ifail == 1:
             # Solution found
             if self.solver != "fsolve":
                 process_output.ocmmnt(
@@ -276,6 +271,44 @@ class Scan:
                 process_output.oblnkl(constants.IOTTY)
 
                 logger.warning(f"High final constraint residues. {numerics.sqsumsq=}")
+        elif ifail == -1:
+            process_output.ocmmnt(constants.NOUT, ", but the solution diverged.")
+            process_output.oheadr(
+                constants.IOTTY,
+                "IVP solution diverged. Derivative residuals calculated instead.",
+            )
+            process_output.ovarre(
+                constants.MFILE,
+                "RMSE of derivative residuals",
+                "residual_rmse",
+                numerics.derivative_rmse,
+            )
+            process_output.ovarre(
+                constants.MFILE,
+                "Temperature derivative",
+                "dte/dt",
+                numerics.derivatives[0],
+            )
+            process_output.ovarre(
+                constants.MFILE,
+                "Density derivative",
+                "dne/dt",
+                numerics.derivatives[1],
+            )
+        else:
+            process_output.ovarin(constants.NOUT, "Error flag", "(ifail)", ifail)
+            process_output.oheadr(
+                constants.IOTTY, "PROCESS COULD NOT FIND A FEASIBLE SOLUTION"
+            )
+            process_output.oblnkl(constants.IOTTY)
+
+            logger.critical(f"Solver returns with ifail /= 1. {ifail=}")
+
+            # Error code handler for VMCON
+            if self.solver == "vmcon":
+                self.verror(ifail)
+            process_output.oblnkl(constants.NOUT)
+            process_output.oblnkl(constants.IOTTY)
 
         process_output.ovarin(
             constants.NOUT, "Number of iteration variables", "(nvar)", numerics.nvar
