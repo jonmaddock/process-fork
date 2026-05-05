@@ -346,9 +346,11 @@ class TFCoil(Model):
 
         # Warn that the value has be forced to a minimum value at some point in
         # iteration
-        logger.error(
-            "dr_tf_plasma_case too small to accommodate the WP, forced to minimum value"
-        )
+        # Annoying log that comes out to terminal. Increasing log level doesn't work
+        # due to logging method?
+        # logger.error(
+        #     "dr_tf_plasma_case too small to accommodate the WP, forced to minimum value"
+        # )
 
         # ======================================================================
 
