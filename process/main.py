@@ -474,6 +474,7 @@ class SingleRun:
                 "select either 1 (optimise) or -2 (no optimisation)."
             )
         self.scan = Scan(self.models, self.solver, self.data)
+        self.scan.run_scan()
 
     @staticmethod
     def show_errors():
