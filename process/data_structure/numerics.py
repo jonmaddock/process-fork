@@ -388,6 +388,24 @@ derivatives: list[float] = None
 derivatives_norm: list[float] = None
 """Normalised derivatives in IVP problem"""
 
+ppb_loss_max: float = None
+"""Maximum loss of PPB"""
+
+fe_loss_max: float = None
+"""Maximum loss of fuel ions"""
+
+dte_dt_max: float = None
+"""Max dte/dt rate"""
+
+dne_dt_max: float = None
+"""Max dne/dt rate"""
+
+dx_dt_norm_max: float = None
+"""Normalisation for dx_dt using maximum values"""
+
+dx_dt_normed_max: float = None
+"""Max-normalised dx/dt"""
+
 objf_name: str = None
 """Description of the objective function"""
 
@@ -484,6 +502,12 @@ def init_numerics():
     global derivative_rmse
     global derivatives
     global derivatives_norm
+    global ppb_loss_max
+    global fe_loss_max
+    global dte_dt_max
+    global dne_dt_max
+    global dx_dt_norm_max
+    global dx_dt_normed_max
     global objf_name
     global norm_objf
     global epsfcn
@@ -646,6 +670,12 @@ def init_numerics():
     derivative_rmse = 0.0
     derivatives = np.array([0.0, 0.0])
     derivatives_norm = np.array([0.0, 0.0])
+    ppb_loss_max = 0.0
+    fe_loss_max = 0.0
+    dte_dt_max = 0.0
+    dne_dt_max = 0.0
+    dx_dt_norm_max = np.ones(2)
+    dx_dt_normed_max = np.zeros(2)
     objf_name = ""
     norm_objf = 0.0
     epsfcn = 1.0e-3

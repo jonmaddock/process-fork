@@ -225,6 +225,10 @@ def constraint_equation_2():
 
     cc = 1.0 - pnumerator / pdenom
 
+    # Set max PPB loss
+    ppb_loss_max = pnumerator
+    data_structure.numerics.ppb_loss_max = ppb_loss_max
+
     return ConstraintResult(cc, pdenom * (1.0 - cc), pdenom * cc)
 
 
@@ -2400,6 +2404,10 @@ def constraint_equation_93():
     )
     denom = data_structure.physics_variables.molflow_plasma_fuelling_required
     cc = 1.0 - num / denom
+
+    # Set max fuel ion loss rate
+    fe_loss_max = num
+    data_structure.numerics.fe_loss_max = fe_loss_max
 
     # Check form of other returned values
     return ConstraintResult(cc, denom * (1.0 - cc), denom * cc)
