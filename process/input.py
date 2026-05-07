@@ -2360,6 +2360,8 @@ INPUT_VARIABLES = {
     "molflow_plasma_fuelling_required": InputVariable(
         data_structure.physics_variables, float, range=(1.0e20, 1.0e23)
     ),
+    "dte_dt_max": InputVariable(data_structure.numerics, float, range=(0.0, 100.0)),
+    "dne_dt_max": InputVariable(data_structure.numerics, float, range=(0.0, 1.0e20)),
 }
 
 

@@ -312,6 +312,40 @@ RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH = "res_opt_evaluations.csv"
 RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH = "res_opt_obj_evaluations.csv"
 
 
+def max_derivatives():
+    # Maximum possible Te and ne derivatives
+    # Max te derivative
+    ni = physics_variables.nd_plasma_ions_total_vol_avg
+    ne = physics_variables.nd_plasma_electrons_vol_avg
+    vol = physics_variables.vol_plasma
+    numerics.dte_dt_max = (
+        (2 / 3)
+        * (1 / 1.602e-19)
+        * ((numerics.ppb_loss_max * 1e6 * vol) / ((ni + ne) * vol))
+    ) * 1e-3
+
+    # Max ne derivative
+    f_alpha = physics_variables.nd_plasma_alphas_vol_avg / ne
+    zimp = calc_zimp()
+    numerics.dne_dt_max = (numerics.fe_loss_max / vol) / (
+        1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha
+    )
+
+
+def calc_zimp():
+    zimp = 0.0
+    for imp in range(irm.N_IMPURITIES):
+        if irm.impurity_arr_z[imp] > 2:
+            zimp += (
+                impurity_radiation.zav_of_te(
+                    imp,
+                    np.array([physics_variables.temp_plasma_electron_vol_avg_kev]),
+                ).squeeze()
+                * (irm.f_nd_impurity_electron_array[imp])
+            )
+    return zimp
+
+
 def derivatives(t, y, self, optimiser=False):
     # Evaluate plasma power balance and fuel equilibrium
     # y is normalised values: fcnvmc1() scales up to real values
@@ -334,32 +368,14 @@ def derivatives(t, y, self, optimiser=False):
         dte_dt = (
             (2 / 3) * (1 / 1.602e-19) * ((ppb * 1e6 * vol) / ((ni + ne) * vol))
         ) * 1e-3
-        # Now work out max derivative
-        numerics.dte_dt_max = (
-            (2 / 3)
-            * (1 / 1.602e-19)
-            * ((numerics.ppb_loss_max * 1e6 * vol) / ((ni + ne) * vol))
-        ) * 1e-3
 
-        zimp = 0.0
-        for imp in range(irm.N_IMPURITIES):
-            if irm.impurity_arr_z[imp] > 2:
-                zimp += (
-                    impurity_radiation.zav_of_te(
-                        imp,
-                        np.array([physics_variables.temp_plasma_electron_vol_avg_kev]),
-                    ).squeeze()
-                    * (irm.f_nd_impurity_electron_array[imp])
-                )
+        zimp = calc_zimp()
         f_alpha = physics_variables.nd_plasma_alphas_vol_avg / ne
         # dne/dt m^-3 s^-1
         dne_dt = (fe / vol) / (
             1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha
         )
-        # Max derivative
-        numerics.dne_dt_max = (numerics.fe_loss_max / vol) / (
-            1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha
-        )
+        max_derivatives()
 
         if DEBUG_DATAFRAME_OUTPUT:
             # Debugging df including derivatives
@@ -971,6 +987,8 @@ class Scipy_SLSQP(_Solver):
 
         if result.success:
             info = 1
+            # TODO Max derivatives need to be calculated for all solvers: sort out
+            max_derivatives()
         else:
             # Want to write error code to MFILE
             # raise RuntimeError("scipy failed to converge")
