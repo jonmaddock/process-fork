@@ -319,6 +319,10 @@ def constraint_equation_2(constraint_registration, data):
             + data.physics.pden_plasma_ohmic_mw
         )
 
+    # Set max PPB loss
+    ppb_loss_max = pnumerator
+    data.numerics.ppb_loss_max = ppb_loss_max
+
     return eq(pnumerator, pdenom, constraint_registration)
 
 
@@ -1961,7 +1965,9 @@ def constraint_equation_92(constraint_registration, data):
 def constraint_equation_93(constraint_registration, data):
     num = data.physics.fusrat_total / data.physics.burnup
     denom = data.physics.molflow_plasma_fuelling_required
-
+    # Set max fuel ion loss rate
+    fe_loss_max = num
+    data.numerics.fe_loss_max = fe_loss_max
     return eq(num, denom, constraint_registration)
 
 
