@@ -356,6 +356,13 @@ def derivatives(t, y, self, optimiser=False):
         dte_dt = (
             (2 / 3) * (1 / 1.602e-19) * ((ppb * 1e6 * vol) / ((ni + ne) * vol))
         ) * 1e-3
+        # Now work out max derivative
+        numerics.dte_dt_max = (
+            (2 / 3)
+            * (1 / 1.602e-19)
+            * ((numerics.ppb_loss_max * 1e6 * vol) / ((ni + ne) * vol))
+        ) * 1e-3
+
         zimp = 0.0
         for imp in range(self.data.impurity_radiation.N_IMPURITIES):
             if self.data.impurity_radiation.impurity_arr_z[imp] > 2:
@@ -370,6 +377,10 @@ def derivatives(t, y, self, optimiser=False):
         # dne/dt m^-3 s^-1
         dne_dt = (fe / vol) / (
             1 - self.data.physics.f_nd_beam_electron - zimp - 2 * f_alpha
+        )
+        # Max derivative
+        numerics.dne_dt_max = (numerics.fe_loss_max / vol) / (
+            1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha
         )
 
         if DEBUG_DATAFRAME_OUTPUT:
@@ -411,18 +422,21 @@ def derivatives(t, y, self, optimiser=False):
 
 def residual(x, self):
     # x is normalised vector
-    dx_dt = derivatives(None, x, self, optimiser=True)
+    dx_dt_norm = derivatives(None, x, self, optimiser=True)
 
     # Return sum of squares of normalised derivatives
-    # TODO Sort normalisation
-    res = np.sum(dx_dt**2)
+    # Unnormalise derivatives
+    dx_dt = dx_dt_norm / (self.t0 * self.scaling[:2])
+    # Normalise using max values (set from previous solution point)
+    numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
+    res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
     if DEBUG_DATAFRAME_OUTPUT:
         # Debug data
         data = {
             "te": [x[0]],
             "ne": [x[1]],
-            "dte_dt": [dx_dt[0]],
-            "dne_dt": [dx_dt[1]],
+            "dte_dt": [numerics.dx_dt_normed_max[0]],
+            "dne_dt": [numerics.dx_dt_normed_max[1]],
             "res": [res],
         }
         pd.DataFrame(data).to_csv(

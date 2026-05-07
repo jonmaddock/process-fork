@@ -484,6 +484,20 @@ class Scan:
         written_warning = False
 
         # Output optimisation parameters
+        # Maximum derivatives for normalisation
+        process_output.ovarre(
+            constants.MFILE,
+            "Max temperature derivative",
+            "dte_dt_max",
+            numerics.dte_dt_max,
+        )
+        process_output.ovarre(
+            constants.MFILE,
+            "Max density derivative",
+            "dne_dt_max",
+            numerics.dne_dt_max,
+        )
+
         solution_vector_table = []
         for i in range(self.data.numerics.nvar):
             self.data.numerics.xcs[i] = (
