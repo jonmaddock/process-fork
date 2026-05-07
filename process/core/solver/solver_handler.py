@@ -284,6 +284,20 @@ class SolverHandler:
         written_warning = False
 
         # Output optimisation parameters
+        # Maximum derivatives for normalisation
+        process_output.ovarre(
+            constants.MFILE,
+            "Max temperature derivative",
+            "dte_dt_max",
+            self.data.numerics.dte_dt_max,
+        )
+        process_output.ovarre(
+            constants.MFILE,
+            "Max density derivative",
+            "dne_dt_max",
+            self.data.numerics.dne_dt_max,
+        )
+
         solution_vector_table = []
         for i in range(nums.n_iteration_variables):
             nums.xcs[i] = nums.xcm[i] * nums.scafc[i]
