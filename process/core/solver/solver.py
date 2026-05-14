@@ -397,7 +397,6 @@ def derivatives(t, y, self, optimiser=False):
         dne_dt = (fe / vol) / (
             1 - self.data.physics.f_nd_beam_electron - zimp - 2 * f_alpha
         )
-        max_derivatives()
 
         if DEBUG_DATAFRAME_OUTPUT:
             # Debugging df including derivatives
@@ -502,19 +501,19 @@ class SolveIVP(_Solver):
         # Residual minimised: calculate residual to return
         # Real derivatives
         dx_dt = result.x / (self.t0 * self.scaling[:2])
-        # Derivatives normalised by initial values only
-        dx_dt_norm = result.x / self.t0
+        # Normalise derivatives using max values (set from previous solution point)
+        numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
         # RMSE
-        res = np.sqrt(np.mean(dx_dt_norm**2))
+        res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
         # Record solution vector
         self.x = result.x
         print(colored("IVP failed, but residual found!", "green"))
-        print(f"{dx_dt_norm = }")
+        print(f"{numerics.dx_dt_norm_max = }")
+        print(f"{numerics.dx_dt_normed_max = }")
         print(f"Residual = {res:.3e}")
         # Set results that will be output in file
         numerics.derivative_rmse = res
         numerics.derivatives = dx_dt
-        numerics.derivatives_norm = dx_dt_norm
 
     def solve(self) -> int:
         try:
@@ -588,6 +587,12 @@ class SolveIVP(_Solver):
                 # Model exceptions here are now not caught
                 # Residual optimisation will raise exception on model exception or
                 # optimiser failure
+                # Set derivative normalisation
+                numerics.dx_dt_norm_max = np.array([
+                    numerics.dte_dt_max,
+                    numerics.dne_dt_max,
+                ])
+
                 result = minimize(
                     fun=residual,
                     x0=initial_values,

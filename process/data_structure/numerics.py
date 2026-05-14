@@ -548,7 +548,6 @@ class NumericsData:
     name_xc: list[str] = field(default_factory=lambda: [""] * IPNVARS)
     derivative_rmse = 0.0
     derivatives = np.array([0.0, 0.0])
-    derivatives_norm = np.array([0.0, 0.0])
     ppb_loss_max = 0.0
     fe_loss_max = 0.0
     dte_dt_max = 0.0
