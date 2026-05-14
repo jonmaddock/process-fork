@@ -385,9 +385,6 @@ derivative_rmse: float = None
 derivatives: list[float] = None
 """Derivatives in IVP problem"""
 
-derivatives_norm: list[float] = None
-"""Normalised derivatives in IVP problem"""
-
 ppb_loss_max: float = None
 """Maximum loss of PPB"""
 
@@ -501,7 +498,6 @@ def init_numerics():
     global sqsumsq
     global derivative_rmse
     global derivatives
-    global derivatives_norm
     global ppb_loss_max
     global fe_loss_max
     global dte_dt_max
@@ -669,7 +665,6 @@ def init_numerics():
     sqsumsq = 0.0
     derivative_rmse = 0.0
     derivatives = np.array([0.0, 0.0])
-    derivatives_norm = np.array([0.0, 0.0])
     ppb_loss_max = 0.0
     fe_loss_max = 0.0
     dte_dt_max = 0.0
