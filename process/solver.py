@@ -376,10 +376,18 @@ def derivatives(t, y, self, optimiser=False):
             1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha
         )
 
+        # Get real value of t
+        if t is None:
+            # Residual opt has no time step
+            t_unnorm = None
+        else:
+            # IVP has time step
+            t_unnorm = t * self.t0
+
         if DEBUG_DATAFRAME_OUTPUT:
             # Debugging df including derivatives
             data = {
-                "t": [t],
+                "t": [t_unnorm],
                 "te": [te],
                 "ne": [ne],
                 "dte_dt": [dte_dt],
@@ -426,8 +434,8 @@ def residual(x, self):
     if DEBUG_DATAFRAME_OUTPUT:
         # Debug data
         data = {
-            "te": [x[0]],
-            "ne": [x[1]],
+            "te": [x[0] / self.scaling[0]],
+            "ne": [x[1] / self.scaling[1]],
             "dte_dt": [numerics.dx_dt_normed_max[0]],
             "dne_dt": [numerics.dx_dt_normed_max[1]],
             "res": [res],
