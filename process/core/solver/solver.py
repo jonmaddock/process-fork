@@ -507,15 +507,18 @@ class SolveIVP(_Solver):
 
     def handle_residual_sol(self, result):
         # Residual minimised: calculate residual to return
-        # Real derivatives
-        dx_dt = result.x / (self.t0 * self.scaling[:2])
-        # Normalise derivatives using max values (set from previous solution point)
+        # result.x is normalised vector; get normalised derivatives
+        dx_dt_norm = derivatives(None, result.x, self, optimiser=True)
+        # Unnormalise derivatives
+        dx_dt = dx_dt_norm / (self.t0 * self.scaling[:2])
+        # Normalise instead using max values (set from previous solution point)
         numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
         # RMSE
         res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
         # Record solution vector
         self.x = result.x
         print(colored("IVP failed, but residual found!", "green"))
+        print(f"{dx_dt = }")
         print(f"{numerics.dx_dt_norm_max = }")
         print(f"{numerics.dx_dt_normed_max = }")
         print(f"Residual = {res:.3e}")
