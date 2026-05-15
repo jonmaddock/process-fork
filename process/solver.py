@@ -300,9 +300,9 @@ def detect_steady_state(
     self,
 ):
     # Terminate integration when d/dts below tolerance (crosses 0)
-    tol = 5.0e-3
-    d_dts = derivatives(t, y, self)
-    return np.sqrt(d_dts[0] ** 2 + d_dts[1] ** 2) - tol
+    tol = 1.0e-4
+    dx_dt = derivatives(t, y, self)
+    return np.sqrt(np.mean(dx_dt**2)) - tol
 
 
 # Output paths for evaluations and iterations of solvers: debug only
@@ -514,7 +514,7 @@ class SolveIVP(_Solver):
             pass
 
         initial_values = self.x_0
-        time_span = np.array([0.0, 1.0e3]) / self.t0
+        time_span = np.array([0.0, 2.0e3]) / self.t0
         # TODO Have to set attribute on function (scipy)
         detect_steady_state.terminal = True
         self.scaling = np.array(numerics.scale)
