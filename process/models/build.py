@@ -1689,14 +1689,15 @@ class Build(Model):
             # Issue #514 Radial dimensions of inboard leg
             # Calculate self.data.build.dr_tf_inboard if
             # self.data.tfcoil.dr_tf_wp_with_insulation is an iteration variable (140)
-            # Always calculate: wasn't being calculated in eval mode (no iter vars)
-            # Requires proper solution
-            # if 140 in self.data.numerics.ixc[0 : self.data.numerics.n_iteration_variables]:
-            self.data.build.dr_tf_inboard = (
-                self.data.tfcoil.dr_tf_wp_with_insulation
-                + self.data.tfcoil.dr_tf_plasma_case
-                + self.data.tfcoil.dr_tf_nose_case
-            )
+            if (
+                140
+                in self.data.numerics.ixc[0 : self.data.numerics.n_iteration_variables]
+            ):
+                self.data.build.dr_tf_inboard = (
+                    self.data.tfcoil.dr_tf_wp_with_insulation
+                    + self.data.tfcoil.dr_tf_plasma_case
+                    + self.data.tfcoil.dr_tf_nose_case
+                )
 
         if self.data.build.i_tf_inside_cs == TFCSRadialConfiguration.TF_INSIDE_CS:
             self.data.build.r_tf_inboard_in = self.data.build.dr_bore
