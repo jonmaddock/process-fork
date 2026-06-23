@@ -1746,14 +1746,12 @@ class Build:
 
         # Issue #514 Radial dimensions of inboard leg
         # Calculate build_variables.dr_tf_inboard if tfcoil_variables.dr_tf_wp_with_insulation is an iteration variable (140)
-        # Always calculate: wasn't being calculated in eval mode (no iter vars)
-        # Requires proper solution
-        # if 140 in numerics.ixc[0 : numerics.nvar]:
-        build_variables.dr_tf_inboard = (
-            tfcoil_variables.dr_tf_wp_with_insulation
-            + tfcoil_variables.dr_tf_plasma_case
-            + tfcoil_variables.dr_tf_nose_case
-        )
+        if 140 in numerics.ixc[0 : numerics.nvar]:
+            build_variables.dr_tf_inboard = (
+                tfcoil_variables.dr_tf_wp_with_insulation
+                + tfcoil_variables.dr_tf_plasma_case
+                + tfcoil_variables.dr_tf_nose_case
+            )
 
         if build_variables.i_tf_inside_cs == 1:
             build_variables.r_tf_inboard_in = (
