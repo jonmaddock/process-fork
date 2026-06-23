@@ -3003,7 +3003,7 @@ class Costs:
         #  Capital recovery factor
         # Causes error
         # crfcdr = (fefcdr * cost_variables.discount_rate) / (fefcdr - 1.0e0)
-
+        crfcdr = 1.0
         #  Annual cost of replacements
 
         if cost_variables.ifueltyp == 0:
