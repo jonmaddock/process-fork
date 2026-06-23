@@ -436,6 +436,12 @@ ITERATION_VARIABLES = {
     ),
     174: IterationVariable("triang", data_structure.physics_variables, 0.00, 1.00),
     175: IterationVariable("kappa", data_structure.physics_variables, 0.00, 10.00),
+    176: IterationVariable(
+        "molflow_plasma_fuelling_required",
+        data_structure.physics_variables,
+        1.0e20,
+        1.0e23,
+    ),
 }
 
 
