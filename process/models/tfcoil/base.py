@@ -333,16 +333,14 @@ class TFCoil(Model):
         # This ensures that there is sufficient radial space for the WP to not
         # clip the edges of the plasma-facing front case
 
-        # Remove fixed-point problem by preventing dr_tf_plasma_case(dr_tf_inboard)
-        # Clearly needs a long-term solution
-        # if dr_tf_plasma_case < (r_tf_inboard_in + dr_tf_inboard) * (
-        #     1 - (np.cos(np.pi / data.tfcoil.n_tf_coils))
-        # ):
-        #     dr_tf_plasma_case = (
-        #         1.0
-        #         * (r_tf_inboard_in + dr_tf_inboard)
-        #         * (1 - (np.cos(np.pi / data.tfcoil.n_tf_coils)))
-        #     )
+        if dr_tf_plasma_case < (r_tf_inboard_in + dr_tf_inboard) * (
+            1 - (np.cos(np.pi / tfcoil_variables.n_tf_coils))
+        ):
+            dr_tf_plasma_case = (
+                1.0
+                * (r_tf_inboard_in + dr_tf_inboard)
+                * (1 - (np.cos(np.pi / tfcoil_variables.n_tf_coils)))
+            )
 
         # Warn that the value has be forced to a minimum value at some point in
         # iteration
