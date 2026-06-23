@@ -2841,6 +2841,7 @@ class Costs(Model):
         #  Capital recovery factor
         # Causes errors
         # crfcdr = (fefcdr * self.data.costs.discount_rate) / (fefcdr - 1.0e0)
+        crfcdr = 1.0
 
         #  Annual cost of replacements
 
