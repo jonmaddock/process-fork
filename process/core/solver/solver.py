@@ -945,9 +945,15 @@ class Scipy_SLSQP(_Solver):
         print(f"{ineqs_rms = :.3e}")
 
         # Print constraints sorted by value (most negative (most violated) first)
-        sorted_con_indexes = cons.argsort()
-        for i in sorted_con_indexes:
-            print(f"Constraint {numerics.icc[i]} = {cons[i]:.3e}")
+        sorted_eq_con_indexes = eqs.argsort()
+        print("Equality constraints:")
+        for i in sorted_eq_con_indexes:
+            print(f"Constraint {numerics.icc[i]} = {eqs[i]:.3e}")
+
+        sorted_ineq_con_indexes = ineqs.argsort()
+        print("Inequality constraints:")
+        for i in sorted_ineq_con_indexes:
+            print(f"Constraint {numerics.icc[i]} = {ineqs[i]:.3e}")
 
     def solve(self):
         self.n = self.x_0.shape[0]
