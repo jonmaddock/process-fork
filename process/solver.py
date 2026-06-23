@@ -589,6 +589,7 @@ class SolveIVP(_Solver):
                     # Bounds required to avoid huge steps and subsequent model errors
                     bounds=((0.5, 1.5), (0.5, 1.5)),
                     args=(self,),
+                    jac="3-point",
                 )
                 if result.success:
                     self.handle_residual_sol(result)
