@@ -1189,8 +1189,12 @@ class Physics(Model):
         if self.data.physics.nd_plasma_alphas_thermal_vol_avg < 1.0e-6:
             self.data.physics.nd_plasma_alphas_thermal_vol_avg = 4.5e18
         else:
+            # TODO Misuse of constraint f-value in model. Ratio of tau_alpha / tau_E
+            # = 5, but f_alpha_energy_confinement_min used here to vary it for UQ
+            # This is because f_alpha_energy_confinement_min was previously an optimisation parameter
+            # rather than an assumption, which was wrong
             self.data.physics.nd_plasma_alphas_thermal_vol_avg = (
-                5
+                self.data.constraints.f_t_alpha_energy_confinement_min
                 * self.data.physics.t_energy_confinement
                 * self.data.physics.fusden_alpha_total
             )
