@@ -3307,7 +3307,11 @@ class Physics:
             physics_variables.nd_plasma_alphas_vol_avg = 4.5e18
         else:
             physics_variables.nd_plasma_alphas_vol_avg = (
-                5
+                # TODO Misuse of constraint f-value in model. Ratio of tau_alpha / tau_E
+                # = 5, but f_alpha_energy_confinement_min used here to vary it for UQ
+                # This is because f_alpha_energy_confinement_min was previously an optimisation parameter
+                # rather than an assumption, which was wrong
+                constraint_variables.f_alpha_energy_confinement_min
                 * physics_variables.t_energy_confinement
                 * physics_variables.fusden_alpha_total
             )
