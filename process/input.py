@@ -875,7 +875,7 @@ INPUT_VARIABLES = {
         data_structure.constraint_variables, float, range=(0.001, 10.0)
     ),
     "fncycle": InputVariable(
-        data_structure.constraint_variables, float, range=(1e-08, 1.0)
+        data_structure.constraint_variables, float, range=(1e-08, 3.0)
     ),
     "fndt": InputVariable(data_structure.buildings_variables, float, range=(0.0, 10.0)),
     "fne0": InputVariable(data_structure.physics_variables, float, range=(0.001, 1.0)),
