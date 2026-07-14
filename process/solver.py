@@ -882,8 +882,8 @@ class Scipy_SLSQP(_Solver):
     """Minimise using scipy's SLSQP."""
 
     print("Running scipy's SLSQP")
-    SOLVER_TOL = 1e-6
-    EQ_CONSTRAINT_TOL = 1e-8
+    SOLVER_TOL = 1e-5
+    EQ_CONSTRAINT_TOL = 1e-6
 
     def obj_func(self, x):
         objf, conf = self.evaluators.fcnvmc1(self.n, self.m, x, self.ifail)
@@ -985,7 +985,7 @@ class Scipy_SLSQP(_Solver):
             constraints=constraints,
             tol=self.SOLVER_TOL,
             callback=self.convergence_progress,
-            options={"disp": True, "eps": numerics.epsfcn},
+            options={"disp": True, "eps": numerics.epsfcn, "maxiter": 20},
         )
         end_time = time.time()
         duration = end_time - start_time
