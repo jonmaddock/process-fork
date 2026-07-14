@@ -7972,6 +7972,7 @@ class Physics:
         # else do not adjust p_plasma_loss_mw for radiation
 
         # Ensure heating power is positive (shouldn't be necessary)
+        # Warning: a very small loss power can send the confinement time to extremely large values
         p_plasma_loss_mw = max(p_plasma_loss_mw, 1.0e-3)
 
         # ========================================================================
@@ -8718,6 +8719,17 @@ class Physics:
                 "Illegal value for i_confinement_time",
                 i_confinement_time=i_confinement_time,
             )
+
+        # Experimental: enforce upper limit on confinement time
+        # This prevents low transport loss powers causing a very high confinement
+        # time which causes the fuel ion density to become negative
+        # Kludge form chosen to have large linear region, before abrupt (but continuous)
+        # transition to the limit value
+        t_lim = 10
+        n_linearisation = 10
+        t_electron_confinement = t_electron_confinement / (
+            1 + (t_electron_confinement / t_lim) ** n_linearisation
+        ) ** (1 / n_linearisation)
 
         # Apply H-factor correction to chosen scaling
         t_electron_energy_confinement = hfact * t_electron_confinement
