@@ -10,7 +10,9 @@ from process.core.solver.objectives import objective_function
 from process.data_structure.numerics import PROCESSRunMode
 
 
-def finalise(models, data, ifail: int, non_idempotent_msg: str | None = None):
+def finalise(
+    models, data, ifail: int, call_models, xc, non_idempotent_msg: str | None = None
+):
     """Routine to print out the final point in the scan.
 
     Writes to OUT.DAT and MFILE.DAT.
@@ -33,7 +35,7 @@ def finalise(models, data, ifail: int, non_idempotent_msg: str | None = None):
 
     # Output relevant to no optimisation
     if data.numerics.ioptimz in {PROCESSRunMode.EVALUATION, PROCESSRunMode.SOLUTION}:
-        output_evaluation(data)
+        output_evaluation(data, call_models, xc)
 
     # Print non-idempotence warning to OUT.DAT only
     if non_idempotent_msg:
@@ -44,7 +46,7 @@ def finalise(models, data, ifail: int, non_idempotent_msg: str | None = None):
     op.write(models, data, constants.NOUT)
 
 
-def output_evaluation(data):
+def output_evaluation(data, call_models, xc):
     """Write output for an evaluation run of PROCESS
 
     Parameters
@@ -63,7 +65,7 @@ def output_evaluation(data):
     # Print the residuals of the constraint equations
 
     residual_error, value, residual, symbols, units = constraints.constraint_eqns(
-        data.numerics.neqns + data.numerics.nineqns, -1, data
+        data.numerics.neqns + data.numerics.nineqns, -1, data, call_models, xc
     )
 
     labels = [
