@@ -1012,12 +1012,14 @@ class Scipy_SLSQP(_Solver):
         sorted_eq_con_indexes = eqs.argsort()
         print("Equality constraints:")
         for i in sorted_eq_con_indexes:
+            # Equality constraints first in icc
             print(f"Constraint {numerics.icc[i]} = {eqs[i]:.3e}")
 
         sorted_ineq_con_indexes = ineqs.argsort()
-        print("Inequality constraints:")
+        print("Violated inequality constraints:")
         for i in sorted_ineq_con_indexes:
-            print(f"Constraint {numerics.icc[i]} = {ineqs[i]:.3e}")
+            if ineqs[i] < 0.0:
+                print(f"Constraint {numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}")
 
     def solve(self):
         self.n = self.x_0.shape[0]
