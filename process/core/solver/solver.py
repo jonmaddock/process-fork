@@ -31,10 +31,11 @@ from process.models.physics import impurity_radiation
 from pathlib import Path
 from scipy.optimize import minimize
 from termcolor import colored
+from process import iteration_variables
 
 
 logger = logging.getLogger(__name__)
-DEBUG_DATAFRAME_OUTPUT = False
+DEBUG_DATAFRAME_OUTPUT = True
 
 
 class _Solver(ABC):
@@ -332,6 +333,7 @@ IVP_EVALUATIONS_OUTPUT_PATH = "ivp_evaluations.csv"
 IVP_ITERATIONS_OUTPUT_PATH = "ivp_iterations.csv"
 RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH = "res_opt_evaluations.csv"
 RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH = "res_opt_obj_evaluations.csv"
+SLSQP_OUTPUT_PATH = "slsqp_evaluations.csv"
 
 
 def max_derivatives():
@@ -414,6 +416,8 @@ def derivatives(t, y, self, optimiser=False):
                 "ne": [ne],
                 "dte_dt": [dte_dt],
                 "dne_dt": [dne_dt],
+                "psep": [physics_variables.p_plasma_loss_mw],
+                "tau_E": [physics_variables.t_energy_confinement],
             }
             # Write IVP and residual optimiser evaluations to 2 different output files
             # Only write a header when the file is first created
@@ -461,6 +465,8 @@ def residual(x, self):
             "dte_dt": [numerics.dx_dt_normed_max[0]],
             "dne_dt": [numerics.dx_dt_normed_max[1]],
             "res": [res],
+            "psep": [physics_variables.p_plasma_loss_mw],
+            "tau_E": [physics_variables.t_energy_confinement],
         }
         pd.DataFrame(data).to_csv(
             RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH,
@@ -528,10 +534,13 @@ class SolveIVP(_Solver):
 
     def solve(self) -> int:
         try:
-            Path(RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH).unlink()
-            Path(RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH).unlink()
-            Path(IVP_EVALUATIONS_OUTPUT_PATH).unlink()
-            Path(IVP_ITERATIONS_OUTPUT_PATH).unlink()
+            Path(RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH).unlink(missing_ok=True)
+            Path(RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH).unlink(
+                missing_ok=True
+            )
+            Path(IVP_EVALUATIONS_OUTPUT_PATH).unlink(missing_ok=True)
+            Path(IVP_ITERATIONS_OUTPUT_PATH).unlink(missing_ok=True)
+            Path(SLSQP_OUTPUT_PATH).unlink(missing_ok=True)
         except:
             pass
 
@@ -957,6 +966,32 @@ class Scipy_SLSQP(_Solver):
         for i in sorted_ineq_con_indexes:
             if ineqs[i] < 0.0:
                 print(f"Constraint {numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}")
+
+        if DEBUG_DATAFRAME_OUTPUT:
+            # Debugging df including derivatives
+            iteration_variables.set_scaled_iteration_variable(x_current, len(x_current))
+            data = {
+                "te": [physics_variables.temp_plasma_electron_vol_avg_kev],
+                "ne": [physics_variables.nd_plasma_electrons_vol_avg],
+            }
+            # If first run, prepend with initial point
+            if not os.path.exists(SLSQP_OUTPUT_PATH):
+                # Scale to real values, then back again
+                iteration_variables.set_scaled_iteration_variable(
+                    self.x_0, len(self.x_0)
+                )
+                data["te"].insert(0, physics_variables.temp_plasma_electron_vol_avg_kev)
+                data["ne"].insert(0, physics_variables.nd_plasma_electrons_vol_avg)
+
+            # Write IVP and residual optimiser evaluations to 2 different output files
+            # Only write a header when the file is first created
+            pd.DataFrame(data).to_csv(
+                SLSQP_OUTPUT_PATH,
+                mode="a",
+                header=not os.path.exists(SLSQP_OUTPUT_PATH),
+                index=False,
+                float_format="%.9e",
+            )
 
     def solve(self):
         self.n = self.x_0.shape[0]
