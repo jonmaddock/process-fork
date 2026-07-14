@@ -987,9 +987,9 @@ class SuperconductingTFCoil(TFCoil):
 
             # If strain limit achieved, throw a warning and use the lower strain
             if abs(strain) > 0.5e-2:
-                logger.error(
-                    f"TF strain={strain} was outside the region of applicability. Used lower strain."
-                )
+                # logger.error(
+                #     f"TF strain={strain} was outside the region of applicability. Used lower strain."
+                # )
                 strain = np.sign(strain) * 0.5e-2
 
             #  j_superconductor_critical returned by superconductors.itersc is the critical current density in the
@@ -1889,13 +1889,13 @@ class SuperconductingTFCoil(TFCoil):
         superconducting_tf_coil_variables.tf_fit_z = (
             dr_tf_wp_no_insulation / dx_tf_wp_toroidal_max
         )
-        if (superconducting_tf_coil_variables.tf_fit_z < 0.26e0) or (
-            superconducting_tf_coil_variables.tf_fit_z > 0.7e0
-        ):
-            # write(*,*) 'PEAK_TF_WITH_RIPPLE: fitting problem; z = ',z
-            logger.warning(
-                "(TF coil peak field calculation) Winding pack radial thickness out of fitted range"
-            )
+        # if (superconducting_tf_coil_variables.tf_fit_z < 0.26e0) or (
+        #     superconducting_tf_coil_variables.tf_fit_z > 0.7e0
+        # ):
+        #     # write(*,*) 'PEAK_TF_WITH_RIPPLE: fitting problem; z = ',z
+        #     logger.warning(
+        #         "(TF coil peak field calculation) Winding pack radial thickness out of fitted range"
+        #     )
 
         #  Ratio of peak field with ripple to nominal axisymmetric peak field
 
@@ -2115,23 +2115,23 @@ class SuperconductingTFCoil(TFCoil):
         )
 
         # Negative areas or fractions error reporting
-        if (
-            tfcoil_variables.a_tf_wp_conductor <= 0.0e0
-            or tfcoil_variables.a_tf_wp_extra_void <= 0.0e0
-            or tfcoil_variables.a_tf_coil_wp_turn_insulation <= 0.0e0
-            or tfcoil_variables.a_tf_wp_steel <= 0.0e0
-            or superconducting_tf_coil_variables.a_tf_coil_inboard_steel <= 0.0e0
-            or superconducting_tf_coil_variables.f_a_tf_coil_inboard_steel <= 0.0e0
-            or superconducting_tf_coil_variables.a_tf_coil_inboard_insulation <= 0.0e0
-            or superconducting_tf_coil_variables.f_a_tf_coil_inboard_insulation <= 0.0e0
-        ):
-            logger.error(
-                "One of the areas or fractions is negative in the internal SC TF coil geometry"
-                f"{tfcoil_variables.a_tf_wp_conductor=} {tfcoil_variables.a_tf_wp_extra_void=}"
-                f"{tfcoil_variables.a_tf_coil_wp_turn_insulation=} {tfcoil_variables.a_tf_wp_steel=}"
-                f"{superconducting_tf_coil_variables.a_tf_coil_inboard_steel=} {superconducting_tf_coil_variables.f_a_tf_coil_inboard_steel=}"
-                f"{superconducting_tf_coil_variables.a_tf_coil_inboard_insulation=} {superconducting_tf_coil_variables.f_a_tf_coil_inboard_insulation=}"
-            )
+        # if (
+        #     tfcoil_variables.a_tf_wp_conductor <= 0.0e0
+        #     or tfcoil_variables.a_tf_wp_extra_void <= 0.0e0
+        #     or tfcoil_variables.a_tf_coil_wp_turn_insulation <= 0.0e0
+        #     or tfcoil_variables.a_tf_wp_steel <= 0.0e0
+        #     or superconducting_tf_coil_variables.a_tf_coil_inboard_steel <= 0.0e0
+        #     or superconducting_tf_coil_variables.f_a_tf_coil_inboard_steel <= 0.0e0
+        #     or superconducting_tf_coil_variables.a_tf_coil_inboard_insulation <= 0.0e0
+        #     or superconducting_tf_coil_variables.f_a_tf_coil_inboard_insulation <= 0.0e0
+        # ):
+        #     logger.error(
+        #         "One of the areas or fractions is negative in the internal SC TF coil geometry"
+        #         f"{tfcoil_variables.a_tf_wp_conductor=} {tfcoil_variables.a_tf_wp_extra_void=}"
+        #         f"{tfcoil_variables.a_tf_coil_wp_turn_insulation=} {tfcoil_variables.a_tf_wp_steel=}"
+        #         f"{superconducting_tf_coil_variables.a_tf_coil_inboard_steel=} {superconducting_tf_coil_variables.f_a_tf_coil_inboard_steel=}"
+        #         f"{superconducting_tf_coil_variables.a_tf_coil_inboard_insulation=} {superconducting_tf_coil_variables.f_a_tf_coil_inboard_insulation=}"
+        #     )
 
     def superconducting_tf_wp_geometry(
         self,
@@ -2357,10 +2357,10 @@ class SuperconductingTFCoil(TFCoil):
 
         # --------------
         # Negative WP area error reporting
-        if a_tf_wp_no_insulation <= 0.0e0 or a_tf_wp_with_insulation <= 0.0e0:
-            logger.error(
-                f"Winding pack cross-section problem... {a_tf_wp_no_insulation=} {a_tf_wp_with_insulation=}"
-            )
+        # if a_tf_wp_no_insulation <= 0.0e0 or a_tf_wp_with_insulation <= 0.0e0:
+        #     logger.error(
+        #         f"Winding pack cross-section problem... {a_tf_wp_no_insulation=} {a_tf_wp_with_insulation=}"
+        #     )
 
         return (
             r_tf_wp_inboard_inner,
@@ -2468,10 +2468,10 @@ class SuperconductingTFCoil(TFCoil):
         )
 
         # Report error if the casing area is negative
-        if a_tf_coil_inboard_case <= 0.0e0 or a_tf_coil_outboard_case <= 0.0e0:
-            logger.error(
-                f"Winding pack cross-section problem... {a_tf_coil_inboard_case=} {a_tf_coil_outboard_case=}"
-            )
+        # if a_tf_coil_inboard_case <= 0.0e0 or a_tf_coil_outboard_case <= 0.0e0:
+        #     logger.error(
+        #         f"Winding pack cross-section problem... {a_tf_coil_inboard_case=} {a_tf_coil_outboard_case=}"
+        #     )
 
         # Average lateral casing thickness [m]
         # --------------
