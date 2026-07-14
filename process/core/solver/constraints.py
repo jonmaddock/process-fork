@@ -7,6 +7,7 @@ from typing import ClassVar, Literal
 
 import numpy as np
 from tabulate import tabulate
+from scipy.differentiate import derivative
 
 from process.core import constants, process_output
 from process.core.exceptions import ProcessError, ProcessValueError
@@ -1971,7 +1972,41 @@ def constraint_equation_93(constraint_registration, data):
     return eq(num, denom, constraint_registration)
 
 
-def constraint_eqns(m: int, ieqn: int, data: DataStructure):
+@ConstraintManager.register_constraint(94, "", ">=")
+def constraint_equation_94(constraint_registration, data, model_caller, x_original):
+    # Stability constraint
+    def get_ppb(te, x):
+        # TODO te must be first opt param
+        x[0] = te
+        # Not sure why this is required
+        x = x.flatten()
+        model_caller(x)
+        ppb = constraint_equation_2(constraint_registration, data).normalised_residual
+        return np.array(ppb)
+
+    # Copy x_original to return models to original state afterwards
+    x = np.copy(x_original)
+    te = x[0]
+    # Exclude required to prevent xc being vectorised too
+    get_ppb_veced = np.vectorize(pyfunc=get_ppb, excluded=(1,))
+    result = derivative(
+        get_ppb_veced,
+        np.array(te),
+        args=(x,),
+        preserve_shape=True,  # check this
+        initial_step=1.0e-3,
+        maxiter=1,
+        order=1,
+    )
+    cc = -result.df[0]
+
+    # "Reset" models back to original values
+    model_caller(x_original)
+
+    return geq(cc, 0.0, constraint_registration)
+
+
+def constraint_eqns(m: int, ieqn: int, data: DataStructure, model_caller, xc):
     """Evaluates the constraints given the current state of PROCESS.
 
     Parameters
@@ -2001,7 +2036,13 @@ def constraint_eqns(m: int, ieqn: int, data: DataStructure):
 
     for i in range(i1, i2):
         constraint_id = data.numerics.icc[i]
-        result = ConstraintManager.evaluate_constraint(constraint_id, data)
+        # TODO: Urgh
+        if constraint_id == 94:
+            result = ConstraintManager.evaluate_constraint(
+                constraint_id, data, model_caller, xc
+            )
+        else:
+            result = ConstraintManager.evaluate_constraint(constraint_id, data)
 
         tmp_cc, tmp_con, tmp_err = (
             result.normalised_residual,
@@ -2029,7 +2070,7 @@ def constraint_eqns(m: int, ieqn: int, data: DataStructure):
     return np.array(cc), np.array(con), np.array(err), symbol, units
 
 
-def constraints_output(data: DataStructure, solver_name: str):
+def constraints_output(data: DataStructure, solver_name: str, solver_handler):
     """Output constraints information to file"""
     nums = data.numerics
 
@@ -2038,8 +2079,14 @@ def constraints_output(data: DataStructure, solver_name: str):
         "The following equality constraint residues should be close to zero:",
     )
 
+    # TODO solver_handler has to be passed to allow constraints to call models:
+    # required for thermal stability constraint. Improve?
     con1, con2, err, _, lab = constraint_eqns(
-        nums.n_equality_constraints + nums.n_inequality_constraints, -1, data
+        nums.n_equality_constraints + nums.n_inequality_constraints,
+        -1,
+        data,
+        solver_handler.solver.evaluators.caller._call_models_once,
+        solver_handler.solver.x,
     )
 
     # Write equality constraints to mfile
