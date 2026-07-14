@@ -289,7 +289,7 @@ class Scan:
     def doopt(self):
         """Run the optimiser or solver."""
         ifail = self.solver_handler.run()
-        constraints.constraints_output(self.data, self.solver)
+        constraints.constraints_output(self.data, self.solver, self.solver_handler)
 
         return ifail
 

@@ -176,7 +176,10 @@ class Caller:
         # Now idempotent, return
         # Evaluate objective function and constraints
         objf = objective_function(self.data.numerics.minmax, self.data)
-        conf, _, _, _, _ = constraints.constraint_eqns(m, -1, self.data)
+        # Pass model caller and opt params for stability constraint evaluation
+        conf, _, _, _, _ = constraints.constraint_eqns(
+            m, -1, self.data, self._call_models_once, xc
+        )
         return objf, conf
 
     def call_models_and_write_output(self, xc: np.ndarray, ifail: int):
@@ -351,11 +354,11 @@ class Caller:
                 / self.data.physics.b_plasma_total**2
             )
 
-            print("beta FPP iteration")
-            print(f"{beta = }")
-            print(f"{beta_calc = }")
+            # print("beta FPP iteration")
+            # print(f"{beta = }")
+            # print(f"{beta_calc = }")
             diff = beta - beta_calc
-            print(f"beta - beta_calc = {diff}")
+            # print(f"beta - beta_calc = {diff}")
             beta_list.append(beta)
             beta_calc_list.append(beta_calc)
             return beta_calc
@@ -380,6 +383,8 @@ class Caller:
             self.models,
             self.data,
             ifail,
+            self._call_models_once,
+            xc,
             # non_idempotent_msg=non_idempotent_warning + "\n" + non_idempotent_table,
             non_idempotent_msg="no message",
         )
@@ -553,7 +558,9 @@ class Caller:
         # FISPACT and LOCA model (not used)- removed
 
 
-def finalise(models, data, ifail: int, non_idempotent_msg: str | None = None):
+def finalise(
+    models, data, ifail: int, call_models, xc, non_idempotent_msg: str | None = None
+):
     """Routine to print out the final point in the scan.
 
     Writes to OUT.DAT and MFILE.DAT.
@@ -579,7 +586,7 @@ def finalise(models, data, ifail: int, non_idempotent_msg: str | None = None):
         PROCESSRunMode.EVALUATION,
         PROCESSRunMode.SOLUTION,
     }:
-        output_evaluation(data)
+        output_evaluation(data, call_models, xc)
 
     # Print non-idempotence warning to OUT.DAT only
     if non_idempotent_msg:
@@ -590,7 +597,7 @@ def finalise(models, data, ifail: int, non_idempotent_msg: str | None = None):
     models.write(data, constants.NOUT)
 
 
-def output_evaluation(data):
+def output_evaluation(data, call_models, xc):
     """Write output for an evaluation run of PROCESS
 
     Parameters
@@ -612,6 +619,8 @@ def output_evaluation(data):
         data.numerics.n_equality_constraints + data.numerics.n_inequality_constraints,
         -1,
         data,
+        call_models,
+        xc,
     )
 
     labels = [
