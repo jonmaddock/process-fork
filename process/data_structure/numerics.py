@@ -3,7 +3,7 @@ import numpy as np
 ipnvars: int = 177
 """total number of variables available for iteration"""
 
-ipeqns: int = 93
+ipeqns: int = 94
 """number of constraint equations available"""
 
 ipnfoms: int = 19
@@ -654,6 +654,7 @@ def init_numerics():
         "ECRH ignitability                ",
         "Fuel composition consistency     ",
         "Fuelling rate                    ",
+        "Stability                        ",
     ]
 
     ixc = np.array([0] * ipnvars)

@@ -511,7 +511,10 @@ class Scan:
         )
 
         con1, con2, err, sym, lab = constraints.constraint_eqns(
-            numerics.neqns + numerics.nineqns, -1
+            numerics.neqns + numerics.nineqns,
+            -1,
+            self.solver_handler.solver.evaluators.caller._call_models_once,
+            self.solver_handler.solver.x,
         )
 
         # Write equality constraints to mfile

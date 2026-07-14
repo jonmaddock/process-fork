@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Literal
 
 import numpy as np
+from scipy.differentiate import derivative
 
 import process.data_structure as data_structure
 from process import constants
@@ -2409,7 +2410,42 @@ def constraint_equation_93():
     return ConstraintResult(cc, denom * (1.0 - cc), denom * cc)
 
 
-def constraint_eqns(m: int, ieqn: int):
+@ConstraintManager.register_constraint(94, "", ">=")
+def constraint_equation_94(model_caller, x_original):
+    # Stability constraint
+    def get_ppb(te, x):
+        # TODO te must be first opt param
+        x[0] = te
+        # Not sure why this is required
+        x = x.flatten()
+        model_caller(x)
+        ppb = constraint_equation_2().normalised_residual
+        return np.array(ppb)
+
+    # Copy x_original to return models to original state afterwards
+    x = np.copy(x_original)
+    te = x[0]
+    # Exclude required to prevent xc being vectorised too
+    get_ppb_veced = np.vectorize(pyfunc=get_ppb, excluded=(1,))
+    result = derivative(
+        get_ppb_veced,
+        np.array(te),
+        args=(x,),
+        preserve_shape=True,  # check this
+        initial_step=1.0e-3,
+        maxiter=1,
+        order=1,
+    )
+    cc = -result.df[0]
+
+    # "Reset" models back to original values
+    model_caller(x_original)
+
+    # TODO Fill in 0s
+    return ConstraintResult(cc, 0.0, 0.0)
+
+
+def constraint_eqns(m: int, ieqn: int, model_caller, xc):
     """Evaluates the constraints given the current state of PROCESS.
 
     :param m: The number of constraints to evaluate
@@ -2434,7 +2470,11 @@ def constraint_eqns(m: int, ieqn: int):
             error_msg = f"Constraint equation {constraint_id} cannot be found"
             raise ProcessError(error_msg)
 
-        result = constraint.constraint_equation()
+        # TODO: Urgh
+        if constraint_id == 94:
+            result = constraint.constraint_equation(model_caller, xc)
+        else:
+            result = constraint.constraint_equation()
         tmp_cc, tmp_con, tmp_err = (
             result.normalised_residual,
             result.constraint_value,

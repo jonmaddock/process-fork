@@ -139,7 +139,10 @@ class Caller:
         # Now idempotent, return
         # Evaluate objective function and constraints
         objf = objective_function(data_structure.numerics.minmax)
-        conf, _, _, _, _ = constraints.constraint_eqns(m, -1)
+        # Pass model caller and opt params for stability constraint evaluation
+        conf, _, _, _, _ = constraints.constraint_eqns(
+            m, -1, self._call_models_once, xc
+        )
         return objf, conf
 
     def call_models_and_write_output(self, xc: np.ndarray, ifail: int) -> None:
@@ -308,11 +311,11 @@ class Caller:
                 / pv.b_plasma_total**2
             )
 
-            print("beta FPP iteration")
-            print(f"{beta = }")
-            print(f"{beta_calc = }")
+            # print("beta FPP iteration")
+            # print(f"{beta = }")
+            # print(f"{beta_calc = }")
             diff = beta - beta_calc
-            print(f"beta - beta_calc = {diff}")
+            # print(f"beta - beta_calc = {diff}")
             beta_list.append(beta)
             beta_calc_list.append(beta_calc)
             return beta_calc
@@ -332,6 +335,8 @@ class Caller:
         finalise(
             self.models,
             ifail,
+            self._call_models_once,
+            xc,
             # non_idempotent_msg=non_idempotent_warning + "\n" + non_idempotent_table,
             non_idempotent_msg="no message",
         )
