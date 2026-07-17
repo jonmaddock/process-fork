@@ -1027,7 +1027,7 @@ class Scipy_SLSQP(_Solver):
         res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
         # Record solution vector
         self.x = result.x
-        print(colored("IVP failed, but residual found!", "green"))
+        print(colored("No stable solution found, but residual found!", "green"))
         print(f"{dx_dt = }")
         print(f"{numerics.dx_dt_norm_max = }")
         print(f"{numerics.dx_dt_normed_max = }")
@@ -1037,8 +1037,7 @@ class Scipy_SLSQP(_Solver):
         numerics.derivatives = dx_dt
         # TODO Check/change this return code: need to consider all solution modes
         self.info = -1
-        # No explicit objective function for residual optimisation (e.g. in objectives.py)
-        self.objf = None
+        self.objf = res
 
     def solve(self):
         try:
