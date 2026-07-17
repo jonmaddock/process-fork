@@ -388,7 +388,9 @@ def detect_steady_state(
     # Terminate integration when d/dts below tolerance (crosses 0)
     tol = 1.0e-4
     dx_dt = derivatives(t, y, self)
-    return np.sqrt(np.mean(dx_dt**2)) - tol
+    # Normalise derivatives
+    dx_dt_norm = dx_dt * self.t0 * self.scaling[:2]
+    return np.sqrt(np.mean(dx_dt_norm**2)) - tol
 
 
 # Output paths for evaluations and iterations of solvers: debug only
@@ -503,20 +505,15 @@ def derivatives(t, y, self, optimiser=False):
 
     # If exception thrown (usually from models), will be re-raised here after finally statement
     # Otherwise, return derivatives
-    # Scale derivatives back down to normalised (nondimensionalised) values
-    # TODO Iteration vars (te, ne) need to be in right order (same as scaling)!
-    # TODO Sort out scaling array
-    # TODO Check role of t0 here
-    return np.array([dte_dt, dne_dt]) * self.t0 * self.scaling[:2]
+    # Derivatives are absolute values (not normalised)
+    return np.array([dte_dt, dne_dt])
 
 
 def residual(x, self):
     # x is normalised vector
-    dx_dt_norm = derivatives(None, x, self, optimiser=True)
+    dx_dt = derivatives(None, x, self, optimiser=True)
 
     # Return sum of squares of normalised derivatives
-    # Unnormalise derivatives
-    dx_dt = dx_dt_norm / (self.t0 * self.scaling[:2])
     # Normalise using max values (set from previous solution point)
     numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
     res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
@@ -577,9 +574,7 @@ class SolveIVP(_Solver):
     def handle_residual_sol(self, result):
         # Residual minimised: calculate residual to return
         # result.x is normalised vector; get normalised derivatives
-        dx_dt_norm = derivatives(None, result.x, self, optimiser=True)
-        # Unnormalise derivatives
-        dx_dt = dx_dt_norm / (self.t0 * self.scaling[:2])
+        dx_dt = derivatives(None, result.x, self, optimiser=True)
         # Normalise instead using max values (set from previous solution point)
         numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
         # RMSE
@@ -1010,10 +1005,12 @@ class Scipy_SLSQP(_Solver):
         return conf[self.meq : self.m]
 
     def convergence_progress(self, x_current):
+        obj = self.obj_func(x_current)
         eqs = self.constraint_eq_vec(x_current)
         ineqs = self.constraint_ineq_vec(x_current)
         cons = np.concatenate((eqs, ineqs))
         print("\nIteration results:")
+        print(f"Obj func = {obj}")
         ineqs_rms = np.sqrt(np.mean(np.square(ineqs[ineqs < 0.0])))
         print(f"{ineqs_rms = :.3e}")
 
@@ -1027,8 +1024,8 @@ class Scipy_SLSQP(_Solver):
         sorted_ineq_con_indexes = ineqs.argsort()
         print("Violated inequality constraints:")
         for i in sorted_ineq_con_indexes:
-            if ineqs[i] < 0.0:
-                print(f"Constraint {numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}")
+            # if ineqs[i] < 0.0:
+            print(f"Constraint {numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}")
 
         if DEBUG_DATAFRAME_OUTPUT:
             # Debugging df including derivatives
@@ -1056,7 +1053,66 @@ class Scipy_SLSQP(_Solver):
                 float_format="%.9e",
             )
 
+    def handle_converged_sol(self, result):
+        # Log stuff
+        logger.info(f"{self.SOLVER_TOL=}, {self.EQ_CONSTRAINT_TOL=}")
+        logger.info(f"Iterations: {result.nit}")
+        logger.info(f"Evaluations: {result.nfev}")
+
+        # Recalculate constraints at optimium x
+        objf, conf = self.evaluators.fcnvmc1(self.n, self.m, result.x, self.ifail)
+
+        # Check if constraints are all below tolerance
+        conf_gt_tol = np.sum((conf[self.meq :] < 0.0))
+        logger.info(f"{conf_gt_tol} inequality constraints violated")
+        logger.info(f"Constraint residuals: {conf}")
+
+        # constr_res = np.sqrt(
+        #     np.sum(np.square(conf[: self.meq]))
+        # )  # only for equality constraints
+        # logger.info(f"Constraint residuals: {constr_res:.3e}")
+        # logger.info(f"{conf=}")
+
+        # TODO Max derivatives need to be calculated for all solvers: sort out
+        max_derivatives()
+        self.info = 1
+        self.objf = result.fun
+        self.conf = conf
+        self.x = result.x
+
+    def handle_residual_sol(self, result):
+        # Residual minimised: calculate residual to return
+        # result.x is normalised vector; get normalised derivatives
+        dx_dt = derivatives(None, result.x, self, optimiser=True)
+        # Normalise instead using max values (set from previous solution point)
+        numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
+        # RMSE
+        res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
+        # Record solution vector
+        self.x = result.x
+        print(colored("IVP failed, but residual found!", "green"))
+        print(f"{dx_dt = }")
+        print(f"{numerics.dx_dt_norm_max = }")
+        print(f"{numerics.dx_dt_normed_max = }")
+        print(f"Residual = {res:.3e}")
+        # Set results that will be output in file
+        numerics.derivative_rmse = res
+        numerics.derivatives = dx_dt
+        # TODO Check/change this return code: need to consider all solution modes
+        self.info = -1
+        # No explicit objective function for residual optimisation (e.g. in objectives.py)
+        self.objf = None
+
     def solve(self):
+        try:
+            Path(SLSQP_OUTPUT_PATH).unlink(missing_ok=True)
+            Path(RESIDUAL_OPT_EVALUATIONS_OUTPUT_PATH).unlink(missing_ok=True)
+            Path(RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH).unlink(
+                missing_ok=True
+            )
+        except:
+            pass
+
         self.n = self.x_0.shape[0]
 
         # Check bounds are activated for all optimisation parameters (default case)
@@ -1099,54 +1155,101 @@ class Scipy_SLSQP(_Solver):
 
         start_time = time.time()
 
-        result = optimize.minimize(
-            self.obj_func,
-            self.x_0,
-            method="SLSQP",
-            jac=None,
-            bounds=bounds,
-            constraints=constraints,
-            tol=self.SOLVER_TOL,
-            callback=self.convergence_progress,
-            options={"disp": True, "eps": numerics.epsfcn, "maxiter": 20},
-        )
+        # Solve with equality and inequality constraints
+        # (stable, safe solution)
+        result_eq_ineq = None
+        try:
+            result_eq_ineq = optimize.minimize(
+                self.obj_func,
+                self.x_0,
+                method="SLSQP",
+                jac=None,
+                bounds=bounds,
+                constraints=constraints,
+                tol=self.SOLVER_TOL,
+                callback=self.convergence_progress,
+                options={"disp": True, "eps": numerics.epsfcn, "maxiter": 50},
+            )
+            print(
+                colored(
+                    f"SLSQP eq and ineq cons: no exceptions. solve_ivp error code {result_eq_ineq.status}: {result_eq_ineq.message}",
+                    "green",
+                )
+            )
+        except ValueError as e:
+            # Model error, probably caused by diverging parameter vector
+            print(colored(f"SLSQP eq and ineq cons exception. Model error: {e}", "red"))
+
+        if result_eq_ineq and result_eq_ineq.success:
+            # Eq and ineq con problem converged
+            self.handle_converged_sol(result_eq_ineq)
+        else:
+            # Solver error or model exception
+            # Try to solve with equality constraints only
+            # (failure, stable solution)
+            result_eq = None
+            try:
+                result_eq = optimize.minimize(
+                    self.obj_func,
+                    self.x_0,
+                    method="SLSQP",
+                    jac=None,
+                    bounds=bounds,
+                    constraints=eq_constraints,
+                    tol=self.SOLVER_TOL,
+                    callback=self.convergence_progress,
+                    options={"disp": True, "eps": numerics.epsfcn, "maxiter": 50},
+                )
+                print(
+                    colored(
+                        f"SLSQP eq cons: no exceptions. solve_ivp error code {result_eq.status}: {result_eq.message}",
+                        "green",
+                    )
+                )
+            except ValueError as e:
+                # Model error, probably caused by diverging parameter vector
+                print(colored(f"SLSQP eq cons exception. Model error: {e}", "red"))
+
+            if result_eq and result_eq.success:
+                # Eq con problem converged
+                self.handle_converged_sol(result_eq)
+            else:
+                # Solver error or model exception
+                # Try to minimise ODE residuals
+                # (failure, unstable solution)
+                # Model exceptions here are now not caught
+                # Residual optimisation will raise exception on model exception or
+                # optimiser failure
+                # Set derivative normalisation
+                # TODO DRY
+                numerics.dx_dt_norm_max = np.array([
+                    numerics.dte_dt_max,
+                    numerics.dne_dt_max,
+                ])
+
+                result_ode_res = minimize(
+                    fun=residual,
+                    x0=self.x_0,
+                    bounds=bounds,
+                    args=(self,),
+                    # jac="3-point",
+                )
+                if result_ode_res and result_ode_res.success:
+                    self.handle_residual_sol(result_ode_res)
+                else:
+                    # No model exception, but residual optimiser failed
+                    raise Exception(
+                        colored(
+                            f"Residual optimiser failed: {result_ode_res.message}",
+                            "red",
+                        )
+                    )
+
         end_time = time.time()
         duration = end_time - start_time
-
-        # Log stuff
-        logger.info(f"{self.SOLVER_TOL=}, {self.EQ_CONSTRAINT_TOL=}")
-        logger.info(f"Iterations: {result.nit}")
-        logger.info(f"Evaluations: {result.nfev}")
         logger.info(f"Duration: {duration:.3}")
 
-        # Recalculate constraints at optimium x
-        objf, conf = self.evaluators.fcnvmc1(self.n, self.m, result.x, self.ifail)
-
-        # Check if constraints are all below tolerance
-        conf_gt_tol = np.sum((conf[self.meq :] < 0.0))
-        logger.info(f"{conf_gt_tol} inequality constraints violated")
-        logger.info(f"Constraint residuals: {conf}")
-
-        # constr_res = np.sqrt(
-        #     np.sum(np.square(conf[: self.meq]))
-        # )  # only for equality constraints
-        # logger.info(f"Constraint residuals: {constr_res:.3e}")
-        # logger.info(f"{conf=}")
-
-        if result.success:
-            info = 1
-            # TODO Max derivatives need to be calculated for all solvers: sort out
-            max_derivatives()
-        else:
-            # Want to write error code to MFILE
-            # raise RuntimeError("scipy failed to converge")
-            info = 2
-
-        self.objf = result.fun
-        self.conf = conf
-        self.x = result.x
-
-        return info
+        return self.info
 
 
 def get_solver(data: DataStructure, solver_name: str = "vmcon") -> _Solver:
