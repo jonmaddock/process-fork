@@ -1114,6 +1114,7 @@ class Scipy_SLSQP(_Solver):
             pass
 
         self.n = self.x_0.shape[0]
+        self.scaling = np.array(numerics.scale)
 
         # Check bounds are activated for all optimisation parameters (default case)
         # If not, handle it
