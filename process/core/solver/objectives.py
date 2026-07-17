@@ -3,6 +3,7 @@ import numpy as np
 from process.core.exceptions import ProcessValueError
 from process.core.model import DataStructure
 from process.data_structure.numerics import FiguresOfMerit
+from process.data_structure import numerics
 
 
 def objective_function(minmax: int, data: DataStructure) -> float:
@@ -30,10 +31,12 @@ def objective_function(minmax: int, data: DataStructure) -> float:
         * 17: Net electrical output
         * 18: NULL, f(x) = 1
         * 19: Major radius/burn time
+        * 20: "RMSE inequality constraints",
     data: DataStructure
         data structure object for providing data to the
         objective function
     """
+    LAMBDA = 10
     try:
         figure_of_merit = FiguresOfMerit(abs(minmax))
     except ValueError as err:
@@ -84,6 +87,14 @@ def objective_function(minmax: int, data: DataStructure) -> float:
     elif figure_of_merit == FiguresOfMerit.MAX_Q_MAX_T_PLANT_PULSE_BURN:
         objective_metric = -0.5 * (data.current_drive.big_q_plasma / 20.0) - 0.5 * (
             data.times.t_plant_pulse_burn / 7200.0
+        )
+    elif figure_of_merit == FiguresOfMerit.MIN_INEQ_CONSTRAINT_VIOLATION:
+        # Violated is -ve in Process, so flip sign
+        c = -numerics.constraint_values[numerics.neqns :]
+        # Tikhonov regularisation required to avoid high variance in inequality
+        # constraint values
+        objective_metric = (
+            np.mean(c) + LAMBDA * (np.sqrt(np.sum((c - np.mean(c)) ** 2))) ** 2
         )
 
     return objective_sign * objective_metric

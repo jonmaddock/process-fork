@@ -82,6 +82,10 @@ class FiguresOfMerit(IntEnum):
         19,
         "Linear combination of big Q and pulse length (maximised)",
     )
+    MIN_INEQ_CONSTRAINT_VIOLATION = (
+        20,
+        "Minimise inequality constraint violation, Tikhonov regularised",
+    )
 
     def __new__(cls, value: int, description: str):
         """Create a new FiguresOfMerit enum member with description.
@@ -149,6 +153,8 @@ class NumericsData:
 
     nvar: int = 0
     """number of iteration variables to use"""
+
+    constraint_values: list[float] = None
 
     nviter: int = 0
     """number of optimisation iterations performed"""

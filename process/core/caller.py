@@ -171,12 +171,16 @@ class Caller:
         self.data.physics.beta_total_vol_avg = fixed_point(calc_beta, beta_0)
 
         # Now idempotent, return
-        # Evaluate objective function and constraints
-        objf = objective_function(self.data.numerics.minmax, self.data)
         # Pass model caller and opt params for stability constraint evaluation
         conf, _, _, _, _ = constraints.constraint_eqns(
             m, -1, self.data, self._call_models_once, xc
         )
+        # Evaluate constraints and store in numerics during solver iterations:
+        # can be used in objective function 20. Hence evaluate before objective
+        # calculated
+        self.data.numerics.constraint_values = conf
+        # Evaluate objective function and constraints
+        objf = objective_function(self.data.numerics.minmax, self.data)
         return objf, conf
 
     def call_models_and_write_output(self, xc: np.ndarray, ifail: int):
