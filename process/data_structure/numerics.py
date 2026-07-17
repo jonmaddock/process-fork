@@ -81,6 +81,8 @@ nviter: int = None
 
 icc: list[int] = None
 
+constraint_values: list[float] = None
+
 active_constraints: list[bool] = True
 """Logical array showing which constraints are active"""
 
@@ -490,6 +492,7 @@ def init_numerics():
     global nvar
     global nviter
     global icc
+    global constraint_values
     global active_constraints
     global lablcc
     global ixc
@@ -547,6 +550,7 @@ def init_numerics():
         "net electrical output ",
         "Null figure of merit  ",
         "max Q, max t_plant_pulse_burn     ",
+        "min RMSE inequality constraints    ",
     ]
 
     ncalls = 0
@@ -558,6 +562,7 @@ def init_numerics():
     n_constraints = 0
     nviter = 0
     icc = np.array([0] * ipeqns)
+    constraint_values = np.array([0.0] * ipeqns)
     active_constraints = [False] * ipeqns
 
     lablcc = [

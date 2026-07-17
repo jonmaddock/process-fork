@@ -9,6 +9,7 @@ from process.data_structure import (
     physics_variables,
     tfcoil_variables,
     times_variables,
+    numerics,
 )
 from process.exceptions import ProcessValueError
 
@@ -29,7 +30,9 @@ OBJECTIVE_NAMES = {
     17: "net electrical output",
     18: "NULL",
     19: "Major radius/burn time",
+    20: "RMSE inequality constraints",
 }
+LAMBDA = 10
 
 
 def objective_function(minmax: int) -> float:
@@ -111,5 +114,13 @@ def objective_function(minmax: int) -> float:
             objective_metric = -0.5 * (
                 current_drive_variables.big_q_plasma / 20.0
             ) - 0.5 * (times_variables.t_plant_pulse_burn / 7200.0)
+        case 20:
+            # Violated is -ve in Process, so flip sign
+            c = -numerics.constraint_values[numerics.neqns :]
+            # Tikhonov regularisation required to avoid high variance in inequality
+            # constraint values
+            objective_metric = (
+                np.mean(c) + LAMBDA * (np.sqrt(np.sum((c - np.mean(c)) ** 2))) ** 2
+            )
 
     return objective_sign * objective_metric
