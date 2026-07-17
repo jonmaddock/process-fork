@@ -36,7 +36,7 @@ from process import iteration_variables
 
 
 logger = logging.getLogger(__name__)
-DEBUG_DATAFRAME_OUTPUT = True
+DEBUG_DATAFRAME_OUTPUT = False
 
 
 class _Solver(ABC):
