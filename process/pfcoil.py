@@ -4263,7 +4263,23 @@ def superconpf(bmax, fhe, fcu, jwp, isumat, fhts, strain, thelium, bcritsc, tcri
             full_output=True,
             disp=False,
         )
-        tmarg = t_zero_margin - thelium
+
+        # Solution stolen from #4018
+        if root_result.converged is False:
+            # intercept at ~0 (evaluating at 0 gives a NaN!)
+            margin_func0 = superconductors.superconductor_current_density_margin(
+                1e-6, *arguments
+            )
+            # find the gradient very close to zero (backward finite difference)
+            gradient_margin_func = (
+                superconductors.superconductor_current_density_margin(2e-6, *arguments)
+                - margin_func0
+            ) / 1e-6
+
+            # find the approximate x-intercept
+            tmarg = -margin_func0 / gradient_margin_func
+        else:
+            tmarg = t_zero_margin - thelium
 
     return jcritwp, j_crit_cable, j_crit_sc, tmarg
 
