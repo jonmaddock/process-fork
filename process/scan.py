@@ -211,6 +211,8 @@ class Scan:
             run_type = "fsolve"
         elif self.solver == "solve_ivp":
             run_type = "IVP"
+        elif self.solver == "scipy_slsqp":
+            run_type = "SLSQP (optimisation)"
         else:
             run_type = "VMCON (optimisation)"
         process_output.ocmmnt(
@@ -221,6 +223,12 @@ class Scan:
             "Solver error code",
             "(ifail)",
             ifail,
+        )
+        process_output.ovarre(
+            constants.MFILE,
+            "Solver problem type",
+            "(solver_problem_type)",
+            numerics.solver_problem_type,
         )
         if ifail == 1:
             # Solution found

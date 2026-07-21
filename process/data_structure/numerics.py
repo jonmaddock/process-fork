@@ -472,6 +472,14 @@ NOTE: has no effect if `force_vmcon_inequality_satisfication` is 0
 NOTE: this only affects the VMCON solver.
 """
 
+solver_problem_type: int = None
+"""The optimisation problem solved.
+
+0: objective function minimised, equality and inequality constraints
+1: objective function minimised, equality constraints only
+2: Te and ne derivative residuals minimised, no constraints
+"""
+
 
 def init_numerics():
     global ipnvars
@@ -526,6 +534,7 @@ def init_numerics():
     global vlam
     global force_vmcon_inequality_satisfication
     global force_vmcon_inequality_tolerance
+    global solver_problem_type
 
     """Initialise module variables"""
     ioptimz = 1
@@ -699,3 +708,4 @@ def init_numerics():
     name_xc = [""] * ipnvars
     force_vmcon_inequality_satisfication = 1
     force_vmcon_inequality_tolerance = 1e-8
+    solver_problem_type = 0

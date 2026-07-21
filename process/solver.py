@@ -1099,6 +1099,7 @@ class Scipy_SLSQP(_Solver):
             # Solver error or model exception
             # Try to solve with equality constraints only
             # (failure, stable solution)
+            numerics.solver_problem_type = 1
             result_eq = None
             try:
                 result_eq = optimize.minimize(
@@ -1129,6 +1130,7 @@ class Scipy_SLSQP(_Solver):
                 # Solver error or model exception
                 # Try to minimise ODE residuals
                 # (failure, unstable solution)
+                numerics.solver_problem_type = 2
                 # Model exceptions here are now not caught
                 # Residual optimisation will raise exception on model exception or
                 # optimiser failure
