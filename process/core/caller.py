@@ -171,7 +171,14 @@ class Caller:
 
         # Not sure copy is necessary
         beta_0 = self.data.physics.beta_total_vol_avg
-        self.data.physics.beta_total_vol_avg = fixed_point(calc_beta, beta_0)
+        try:
+            self.data.physics.beta_total_vol_avg = fixed_point(
+                calc_beta, beta_0, maxiter=20
+            )
+        except RuntimeError:
+            logger.warning("Fixed-point problem not converged. Continuing anyway...")
+            # Logger not working...
+            print("Fixed-point problem not converged. Continuing anyway...")
 
         # Now idempotent, return
         # Pass model caller and opt params for stability constraint evaluation
@@ -370,7 +377,14 @@ class Caller:
         print("Running fixed-point problem for beta")
         # Not sure copy is necessary
         beta_0 = self.data.physics.beta_total_vol_avg
-        self.data.physics.beta_total_vol_avg = fixed_point(calc_beta, beta_0)
+        try:
+            self.data.physics.beta_total_vol_avg = fixed_point(
+                calc_beta, beta_0, maxiter=20
+            )
+        except RuntimeError:
+            logger.warning("Fixed-point problem not converged. Continuing anyway...")
+            # Logger not working...
+            print("Fixed-point problem not converged. Continuing anyway...")
 
         # Plotting
         # df = pd.DataFrame({"beta": beta_list, "beta_calc": beta_calc_list})
