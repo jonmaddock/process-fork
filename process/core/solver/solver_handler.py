@@ -129,11 +129,19 @@ class SolverHandler:
             s_type = "fsolve (solution)"
         elif self.solver == "solve_ivp":
             s_type = "IVP (integration)"
+        elif self.solver == "scipy_slsqp":
+            s_type = "SLSQP (optimisation)"
         else:
             s_type = "VMCON (optimisation)"
         process_output.ocmmnt(
             constants.NOUT,
             f"PROCESS has performed a {s_type} run",
+        )
+        process_output.ovarre(
+            constants.MFILE,
+            "Solver problem type",
+            "(solver_problem_type)",
+            self.data.numerics.solver_problem_type,
         )
         ifail = self.solver.info
         if ifail != SolverOutputCondition.CONVERGED:
