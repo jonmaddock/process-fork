@@ -964,7 +964,6 @@ class Physics(Model):
             self.data.physics.burnup,
             self.data.physics.figmer,
             self.data.physics.fusrat,
-            self.data.physics.molflow_plasma_fuelling_required,
             self.data.physics.rndfuel,
             self.data.physics.t_alpha_confinement,
             self.data.physics.f_t_alpha_energy_confinement,
@@ -1548,8 +1547,6 @@ class Physics(Model):
             - burnup (float): Fractional plasma burnup.
             - figmer (float): Physics figure of merit.
             - fusrat (float): Number of fusion reactions per second.
-            - molflow_plasma_fuelling_required (float): Fuelling rate for D-T
-              (nucleus-pairs/sec).
             - rndfuel (float): Fuel burnup rate (reactions/s).
             - t_alpha_confinement (float): Alpha particle confinement time (s).
             - f_t_alpha_energy_confinement (float): Fraction of alpha energy confinement.
@@ -1601,7 +1598,6 @@ class Physics(Model):
             burnup,
             figmer,
             fusrat,
-            self.data.physics.molflow_plasma_fuelling_required,
             rndfuel,
             t_alpha_confinement,
             f_t_alpha_energy_confinement,

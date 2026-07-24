@@ -33,7 +33,8 @@ from process.models.physics import impurity_radiation
 from pathlib import Path
 from scipy.optimize import minimize
 from termcolor import colored
-from process import iteration_variables
+from process.core.solver import iteration_variables
+from process.data_structure.impurity_radiation_variables import N_IMPURITIES
 
 
 logger = logging.getLogger(__name__)
@@ -401,36 +402,37 @@ RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH = "res_opt_obj_evaluations.c
 SLSQP_OUTPUT_PATH = "slsqp_evaluations.csv"
 
 
-def max_derivatives():
+def max_derivatives(self):
     # Maximum possible Te and ne derivatives
     # Max te derivative
-    ni = physics_variables.nd_plasma_ions_total_vol_avg
-    ne = physics_variables.nd_plasma_electrons_vol_avg
-    vol = physics_variables.vol_plasma
-    numerics.dte_dt_max = (
+    ni = self.data.physics.nd_plasma_ions_total_vol_avg
+    ne = self.data.physics.nd_plasma_electrons_vol_avg
+    vol = self.data.physics.vol_plasma
+    self.data.numerics.dte_dt_max = (
         (2 / 3)
         * (1 / 1.602e-19)
-        * ((numerics.ppb_loss_max * 1e6 * vol) / ((ni + ne) * vol))
+        * ((self.data.numerics.ppb_loss_max * 1e6 * vol) / ((ni + ne) * vol))
     ) * 1e-3
 
     # Max ne derivative
-    f_alpha = physics_variables.nd_plasma_alphas_vol_avg / ne
-    zimp = calc_zimp()
-    numerics.dne_dt_max = (numerics.fe_loss_max / vol) / (
-        1 - physics_variables.f_nd_beam_electron - zimp - 2 * f_alpha
+    f_alpha = self.data.physics.nd_plasma_alphas_thermal_vol_avg / ne
+    zimp = calc_zimp(self)
+    self.data.numerics.dne_dt_max = (self.data.numerics.fe_loss_max / vol) / (
+        1 - self.data.physics.f_nd_beam_electron - zimp - 2 * f_alpha
     )
 
 
-def calc_zimp():
+def calc_zimp(self):
     zimp = 0.0
-    for imp in range(irm.N_IMPURITIES):
-        if irm.impurity_arr_z[imp] > 2:
+    for imp in range(N_IMPURITIES):
+        if self.data.impurity_radiation.impurity_arr_z[imp] > 2:
             zimp += (
                 impurity_radiation.zav_of_te(
                     imp,
-                    np.array([physics_variables.temp_plasma_electron_vol_avg_kev]),
+                    np.array([self.data.physics.temp_plasma_electron_vol_avg_kev]),
+                    self.data,
                 ).squeeze()
-                * (irm.f_nd_impurity_electron_array[imp])
+                * (self.data.impurity_radiation.f_nd_impurity_electron_array[imp])
             )
     return zimp
 
@@ -458,7 +460,7 @@ def derivatives(t, y, self, optimiser=False):
             (2 / 3) * (1 / 1.602e-19) * ((ppb * 1e6 * vol) / ((ni + ne) * vol))
         ) * 1e-3
 
-        zimp = calc_zimp()
+        zimp = calc_zimp(self)
         f_alpha = self.data.physics.nd_plasma_alphas_vol_avg / ne
         # dne/dt m^-3 s^-1
         dne_dt = (fe / vol) / (
@@ -1019,20 +1021,20 @@ class Scipy_SLSQP(_Solver):
         print("Equality constraints:")
         for i in sorted_eq_con_indexes:
             # Equality constraints first in icc
-            print(f"Constraint {numerics.icc[i]} = {eqs[i]:.3e}")
+            print(f"Constraint {self.data.numerics.icc[i]} = {eqs[i]:.3e}")
 
         sorted_ineq_con_indexes = ineqs.argsort()
         print("Violated inequality constraints:")
         for i in sorted_ineq_con_indexes:
             # if ineqs[i] < 0.0:
-            print(f"Constraint {numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}")
+            print(f"Constraint {self.data.numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}")
 
         if DEBUG_DATAFRAME_OUTPUT:
             # Debugging df including derivatives
             iteration_variables.set_scaled_iteration_variable(x_current, len(x_current))
             data = {
-                "te": [physics_variables.temp_plasma_electron_vol_avg_kev],
-                "ne": [physics_variables.nd_plasma_electrons_vol_avg],
+                "te": [self.data.physics.temp_plasma_electron_vol_avg_kev],
+                "ne": [self.data.physics.nd_plasma_electrons_vol_avg],
             }
             # If first run, prepend with initial point
             if not os.path.exists(SLSQP_OUTPUT_PATH):
@@ -1040,8 +1042,8 @@ class Scipy_SLSQP(_Solver):
                 iteration_variables.set_scaled_iteration_variable(
                     self.x_0, len(self.x_0)
                 )
-                data["te"].insert(0, physics_variables.temp_plasma_electron_vol_avg_kev)
-                data["ne"].insert(0, physics_variables.nd_plasma_electrons_vol_avg)
+                data["te"].insert(0, self.data.physics.temp_plasma_electron_vol_avg_kev)
+                data["ne"].insert(0, self.data.physics.nd_plasma_electrons_vol_avg)
 
             # Write IVP and residual optimiser evaluations to 2 different output files
             # Only write a header when the file is first created
@@ -1074,7 +1076,7 @@ class Scipy_SLSQP(_Solver):
         # logger.info(f"{conf=}")
 
         # TODO Max derivatives need to be calculated for all solvers: sort out
-        max_derivatives()
+        max_derivatives(self)
         self.info = 1
         self.objf = result.fun
         self.conf = conf
@@ -1113,7 +1115,7 @@ class Scipy_SLSQP(_Solver):
             pass
 
         self.n = self.x_0.shape[0]
-        self.scaling = np.array(numerics.scale)
+        self.scaling = np.array(self.data.numerics.scale)
 
         # Check bounds are activated for all optimisation parameters (default case)
         # If not, handle it
@@ -1168,11 +1170,11 @@ class Scipy_SLSQP(_Solver):
                 constraints=constraints,
                 tol=self.SOLVER_TOL,
                 callback=self.convergence_progress,
-                options={"disp": True, "eps": numerics.epsfcn, "maxiter": 50},
+                options={"disp": True, "eps": self.data.numerics.epsfcn, "maxiter": 50},
             )
             print(
                 colored(
-                    f"SLSQP eq and ineq cons: no exceptions. solve_ivp error code {result_eq_ineq.status}: {result_eq_ineq.message}",
+                    f"SLSQP eq and ineq cons: no exceptions. SLSQP error code {result_eq_ineq.status}: {result_eq_ineq.message}",
                     "green",
                 )
             )
@@ -1203,7 +1205,7 @@ class Scipy_SLSQP(_Solver):
                 )
                 print(
                     colored(
-                        f"SLSQP eq cons: no exceptions. solve_ivp error code {result_eq.status}: {result_eq.message}",
+                        f"SLSQP eq cons: no exceptions. SLSQP error code {result_eq.status}: {result_eq.message}",
                         "green",
                     )
                 )

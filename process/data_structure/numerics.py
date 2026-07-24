@@ -302,6 +302,8 @@ class NumericsData:
             "CS achievable stress load cycles lower limit           ",
             "ECRH ignitability                ",  # Stellarator constraint
             "Fuel composition consistency     ",
+            "Fuel ion equilibrium             ",
+            "Thermal stability                ",
         ]
     )
     """Labels describing constraint equations (corresponding itvs)<UL>
@@ -404,6 +406,8 @@ class NumericsData:
     * (90) Lower Limit on number of stress load cycles for CS
     * (91) Checking if the design point is ECRH ignitable
     * (92) D/T/He3 ratio in fuel sums to 1
+    * (93) Fuel ion equilibrium
+    * (94) Thermal stability
     """
 
     ixc: list[int] = field(
@@ -603,6 +607,7 @@ class NumericsData:
     dne_dt_max = 0.0
     dx_dt_norm_max = np.ones(2)
     dx_dt_normed_max = np.zeros(2)
+    solver_problem_type: int = 0
 
     sqsumsq: float = 0.0
     """sqrt of the sum of the square of the constraint residuals"""
