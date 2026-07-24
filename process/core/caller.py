@@ -29,7 +29,6 @@ from process.models.tfcoil.superconducting import SuperconductingTFTurnType
 # from process.process_output import OutputFileManager
 from scipy.optimize import fixed_point
 from process.data_structure import physics_variables as pv
-from process import constants
 import pandas as pd
 
 if TYPE_CHECKING:
