@@ -1357,10 +1357,10 @@ def constraint_equation_62(constraint_registration, data):
         Lower limit on f_t_alpha_energy_confinement the ratio of alpha particle to
         energy confinement times
     """
-    numerator = data.physics_variables.t_alpha_confinement
+    numerator = data.physics.t_alpha_confinement
     denominator = (
-        data.physics_variables.t_energy_confinement
-        * data.constraint_variables.f_alpha_energy_confinement_min
+        data.physics.t_energy_confinement
+        * data.constraints.f_t_alpha_energy_confinement_min
     )
 
     return eq(numerator, denominator, constraint_registration)

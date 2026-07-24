@@ -4894,7 +4894,7 @@ def superconpf(
             )
 
         another_estimate = 2 * temp_pf_peak_field
-        t_zero_margin, _root_result = optimize.newton(
+        t_zero_margin, root_result = optimize.newton(
             func=superconductors.superconductor_current_density_margin,
             x0=temp_pf_peak_field,
             fprime=None,

@@ -122,8 +122,8 @@ from process.models.tfcoil.superconducting import (
 )
 from process.models.vacuum import Vacuum, VacuumVessel
 from process.models.water_use import WaterUse
-from process.caller import write_output_files
-from process.iteration_variables import load_iteration_variables
+from process.core.caller import write_output_files
+from process.core.solver.iteration_variables import load_iteration_variables
 
 PACKAGE_LOGGING = True
 """Can be set False to disable package-level logging, e.g. in the test suite"""

@@ -330,12 +330,12 @@ class TFCoil(Model):
         # clip the edges of the plasma-facing front case
 
         if dr_tf_plasma_case < (r_tf_inboard_in + dr_tf_inboard) * (
-            1 - (np.cos(np.pi / tfcoil_variables.n_tf_coils))
+            1 - (np.cos(np.pi / n_tf_coils))
         ):
             dr_tf_plasma_case = (
                 1.0
                 * (r_tf_inboard_in + dr_tf_inboard)
-                * (1 - (np.cos(np.pi / tfcoil_variables.n_tf_coils)))
+                * (1 - (np.cos(np.pi / n_tf_coils)))
             )
 
         # Warn that the value has be forced to a minimum value at some point in

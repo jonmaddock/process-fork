@@ -663,8 +663,11 @@ class ImpurityRadiation:
             )
 
             # Edge region radiation profile
-            fradedge_profile = np.zeros_like(self.rho)
-            edge_mask = self.rho >= impurity_radiation_module.radius_plasma_core_norm
+            fradedge_profile = np.zeros_like(self.plasma_profile.neprofile.profile_x)
+            edge_mask = (
+                self.plasma_profile.neprofile.profile_x
+                >= self.data.impurity_radiation.radius_plasma_core_norm
+            )
             fradedge_profile[edge_mask] = 1.0  # Edge region gets full value
             pden_impurity_rad_edge_total = self.pimp_profile * fradedge_profile
 
@@ -689,22 +692,24 @@ class ImpurityRadiation:
                 pden_impurity_rad_total = self.pimp_profile
                 pden_impurity_core_rad_total = self.pimp_profile * (
                     # Nasty!
-                    # self.rho
+                    # self.plasma_profile.neprofile.profile_x
                     fradcore(
-                        self.rho,
-                        impurity_radiation_module.radius_plasma_core_norm,
-                        impurity_radiation_module.f_p_plasma_core_rad_reduction,
+                        self.plasma_profile.neprofile.profile_x,
+                        self.data.impurity_radiation.radius_plasma_core_norm,
+                        self.data.impurity_radiation.f_p_plasma_core_rad_reduction,
                     )
                 )
             else:
                 # Is this wrongly multiplying by rho too? Looks like it
-                pden_impurity_rad_total = self.pimp_profile * self.rho
+                pden_impurity_rad_total = (
+                    self.pimp_profile * self.plasma_profile.neprofile.profile_x
+                )
                 pden_impurity_core_rad_total = self.pimp_profile * (
-                    self.rho
+                    self.plasma_profile.neprofile.profile_x
                     * fradcore(
-                        self.rho,
-                        impurity_radiation_module.radius_plasma_core_norm,
-                        impurity_radiation_module.f_p_plasma_core_rad_reduction,
+                        self.plasma_profile.neprofile.profile_x,
+                        self.data.impurity_radiation.radius_plasma_core_norm,
+                        self.data.impurity_radiation.f_p_plasma_core_rad_reduction,
                     )
                 )
 

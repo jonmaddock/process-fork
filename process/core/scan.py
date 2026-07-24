@@ -301,7 +301,7 @@ class Scan:
             constants.MFILE,
             "Solver problem type",
             "(solver_problem_type)",
-            numerics.solver_problem_type,
+            self.data.numerics.solver_problem_type,
         )
         if ifail == 1:
             # Solution found
@@ -497,13 +497,13 @@ class Scan:
             constants.MFILE,
             "Max temperature derivative",
             "dte_dt_max",
-            numerics.dte_dt_max,
+            self.data.numerics.dte_dt_max,
         )
         process_output.ovarre(
             constants.MFILE,
             "Max density derivative",
             "dne_dt_max",
-            numerics.dne_dt_max,
+            self.data.numerics.dne_dt_max,
         )
 
         solution_vector_table = []

@@ -261,6 +261,8 @@ class NumericsData:
             "CS achievable stress load cycles lower limit           ",
             "ECRH ignitability                ",  # Stellarator constraint
             "Fuel composition consistency     ",
+            "Fuel ion equilibrium             ",
+            "Thermal stability                ",
         ]
     )
     """Labels describing constraint equations (corresponding itvs)<UL>
@@ -363,6 +365,8 @@ class NumericsData:
     * (90) Lower Limit on number of stress load cycles for CS
     * (91) Checking if the design point is ECRH ignitable
     * (92) D/T/He3 ratio in fuel sums to 1
+    * (93) Fuel ion equilibrium
+    * (94) Thermal stability
     """
 
     ixc: list[int] = field(default_factory=lambda: np.array([0] * IPNVARS))
@@ -552,14 +556,15 @@ class NumericsData:
     # other python utilities, so they cannot easily be changed.
 
     name_xc: list[str] = field(default_factory=lambda: [""] * IPNVARS)
-    derivative_rmse = 0.0
-    derivatives = np.array([0.0, 0.0])
-    ppb_loss_max = 0.0
-    fe_loss_max = 0.0
-    dte_dt_max = 0.0
-    dne_dt_max = 0.0
-    dx_dt_norm_max = np.ones(2)
-    dx_dt_normed_max = np.zeros(2)
+    derivative_rmse: float = 0.0
+    derivatives: list[float] = field(default_factory=lambda: np.array([0.0, 0.0]))
+    ppb_loss_max: float = 0.0
+    fe_loss_max: float = 0.0
+    dte_dt_max: float = 0.0
+    dne_dt_max: float = 0.0
+    dx_dt_norm_max: list[float] = field(default_factory=lambda: np.ones(2))
+    dx_dt_normed_max: list[float] = field(default_factory=lambda: np.zeros(2))
+    solver_problem_type: int = 0
 
     sqsumsq: float = 0.0
     """sqrt of the sum of the square of the constraint residuals"""
