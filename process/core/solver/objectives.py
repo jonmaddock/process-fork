@@ -106,7 +106,7 @@ def objective_function(i_figure_merit: int, data: DataStructure) -> float:
         )
     elif figure_of_merit == FiguresOfMerit.MIN_INEQ_CONSTRAINT_VIOLATION:
         # Violated is -ve in Process, so flip sign
-        c = -numerics.constraint_values[numerics.neqns :]
+        c = -data.numerics.constraint_residuals_normalised[data.numerics.neqns :]
         # Tikhonov regularisation required to avoid high variance in inequality
         # constraint values
         objective_metric = (
