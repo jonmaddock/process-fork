@@ -1543,6 +1543,10 @@ class SauterBootstrapCurrent(Model):
         # Create the partial derivatives using numpy gradient (central differences)
         dlogte_drho = np.gradient(np.log(tempe), rho)[radial_elements - 1]
         dlogti_drho = np.gradient(np.log(tempi), rho)[radial_elements - 1]
+        # Kludge to avoid log 0 error
+        if np.any(ne <= 0.0):
+            ne[ne <= 0.0] = 1.0e-6
+            # print("ne replaced!")
         dlogne_drho = np.gradient(np.log(ne), rho)[radial_elements - 1]
 
         jboot = (
