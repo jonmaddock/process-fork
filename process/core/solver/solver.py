@@ -464,7 +464,7 @@ def derivatives(t, y, self, optimiser=False):
         ) * 1e-3
 
         zimp = calc_zimp(self)
-        f_alpha = self.data.physics.nd_plasma_alphas_vol_avg / ne
+        f_alpha = self.data.physics.nd_plasma_alphas_thermal_vol_avg / ne
         # dne/dt m^-3 s^-1
         dne_dt = (fe / vol) / (
             1 - self.data.physics.f_nd_beam_electron - zimp - 2 * f_alpha
