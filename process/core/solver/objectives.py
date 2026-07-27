@@ -36,7 +36,7 @@ def objective_function(minmax: int, data: DataStructure) -> float:
         data structure object for providing data to the
         objective function
     """
-    LAMBDA = 10
+    LAMBDA = 1
     try:
         figure_of_merit = FiguresOfMerit(abs(minmax))
     except ValueError as err:
