@@ -364,22 +364,22 @@ class Scan:
                 constants.MFILE,
                 "RMSE of derivative residuals",
                 "residual_rmse",
-                numerics.derivative_rmse,
+                self.data.numerics.derivative_rmse,
             )
             process_output.ovarre(
                 constants.MFILE,
                 "Temperature derivative",
                 "dte/dt",
-                numerics.derivatives[0],
+                self.data.numerics.derivatives[0],
             )
             process_output.ovarre(
                 constants.MFILE,
                 "Density derivative",
                 "dne/dt",
-                numerics.derivatives[1],
+                self.data.numerics.derivatives[1],
             )
         else:
-            process_output.ovarin(constants.NOUT, "Error flag", "(ifail)", ifail)
+            process_output.ovarre(constants.NOUT, "Error flag", "(ifail)", ifail)
             process_output.oheadr(
                 constants.IOTTY, "PROCESS COULD NOT FIND A FEASIBLE SOLUTION"
             )
