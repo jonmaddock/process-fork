@@ -182,7 +182,7 @@ INPUT_VARIABLES = {
     "f_p_div_lower": InputVariable("physics", float, range=(0.0, 1.0)),
     "f_plasma_fuel_deuterium": InputVariable("physics", float, range=(0.0, 1.0)),
     "ffwal": InputVariable("physics", float, range=(0.0, 10.0)),
-    "f_nd_plasma_pedestal_greenwald": InputVariable("physics", float, range=(0.1, 1.5)),
+    "f_nd_plasma_pedestal_greenwald": InputVariable("physics", float, range=(0.1, 1.7)),
     "f_nd_plasma_separatrix_greenwald": InputVariable(
         "physics", float, range=(0.001, 0.9)
     ),
