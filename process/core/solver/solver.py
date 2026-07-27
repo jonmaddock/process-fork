@@ -483,8 +483,8 @@ def derivatives(t, y, self, optimiser=False):
                 "ne": [ne],
                 "dte_dt": [dte_dt],
                 "dne_dt": [dne_dt],
-                "psep": [physics_variables.p_plasma_loss_mw],
-                "tau_E": [physics_variables.t_energy_confinement],
+                "psep": [self.data.physics.p_plasma_loss_mw],
+                "tau_E": [self.data.physics.t_energy_confinement],
             }
             # Write IVP and residual optimiser evaluations to 2 different output files
             # Only write a header when the file is first created
@@ -517,18 +517,18 @@ def residual(x, self):
 
     # Return sum of squares of normalised derivatives
     # Normalise using max values (set from previous solution point)
-    numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
-    res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
+    self.data.numerics.dx_dt_normed_max = dx_dt / self.data.numerics.dx_dt_norm_max
+    res = np.sqrt(np.mean(self.data.numerics.dx_dt_normed_max**2))
     if DEBUG_DATAFRAME_OUTPUT:
         # Debug data
         data = {
             "te": [x[0] / self.scaling[0]],
             "ne": [x[1] / self.scaling[1]],
-            "dte_dt": [numerics.dx_dt_normed_max[0]],
-            "dne_dt": [numerics.dx_dt_normed_max[1]],
+            "dte_dt": [self.data.numerics.dx_dt_normed_max[0]],
+            "dne_dt": [self.data.numerics.dx_dt_normed_max[1]],
             "res": [res],
-            "psep": [physics_variables.p_plasma_loss_mw],
-            "tau_E": [physics_variables.t_energy_confinement],
+            "psep": [self.data.physics.p_plasma_loss_mw],
+            "tau_E": [self.data.physics.t_energy_confinement],
         }
         pd.DataFrame(data).to_csv(
             RESIDUAL_OPT_EVALUATIONS_WITH_OBJECTIVE_OUTPUT_PATH,
@@ -578,19 +578,19 @@ class SolveIVP(_Solver):
         # result.x is normalised vector; get normalised derivatives
         dx_dt = derivatives(None, result.x, self, optimiser=True)
         # Normalise instead using max values (set from previous solution point)
-        numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
+        self.data.numerics.dx_dt_normed_max = dx_dt / self.data.numerics.dx_dt_norm_max
         # RMSE
-        res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
+        res = np.sqrt(np.mean(self.data.numerics.dx_dt_normed_max**2))
         # Record solution vector
         self.x = result.x
         print(colored("IVP failed, but residual found!", "green"))
         print(f"{dx_dt = }")
-        print(f"{numerics.dx_dt_norm_max = }")
-        print(f"{numerics.dx_dt_normed_max = }")
+        print(f"{self.data.numerics.dx_dt_norm_max = }")
+        print(f"{self.data.numerics.dx_dt_normed_max = }")
         print(f"Residual = {res:.3e}")
         # Set results that will be output in file
-        numerics.derivative_rmse = res
-        numerics.derivatives = dx_dt
+        self.data.numerics.derivative_rmse = res
+        self.data.numerics.derivatives = dx_dt
 
     def solve(self) -> int:
         try:
@@ -608,7 +608,7 @@ class SolveIVP(_Solver):
         time_span = np.array([0.0, 2.0e3]) / self.t0
         # TODO Have to set attribute on function (scipy)
         detect_steady_state.terminal = True
-        self.scaling = np.array(numerics.scale)
+        self.scaling = np.array(self.data.numerics.scale)
 
         # Radau required due to "stiffness": very different timescales of dte/dt and dne/dt
         sol_result = None
@@ -653,8 +653,8 @@ class SolveIVP(_Solver):
                 # Reset state: try flushing out model errors from likely previous bad IVP
                 # state: this works, otherwise get negative znfuel again immediately
                 # TODO Clearly needs improvement/justification
-                physics_variables.fusden_alpha_total = 0.0
-                physics_variables.nd_plasma_alphas_vol_avg = 0.0
+                self.data.physics.fusden_alpha_total = 0.0
+                self.data.physics.nd_plasma_alphas_thermal_vol_avg = 0.0
                 for _ in range(5):
                     try:
                         _, _ = self.evaluators.fcnvmc1(
@@ -668,9 +668,9 @@ class SolveIVP(_Solver):
                 # Residual optimisation will raise exception on model exception or
                 # optimiser failure
                 # Set derivative normalisation
-                numerics.dx_dt_norm_max = np.array([
-                    numerics.dte_dt_max,
-                    numerics.dne_dt_max,
+                self.data.numerics.dx_dt_norm_max = np.array([
+                    self.data.numerics.dte_dt_max,
+                    self.data.numerics.dne_dt_max,
                 ])
 
                 result = minimize(
@@ -727,7 +727,7 @@ class FSolve(_Solver):
 
         # Write iteration parameter vector to CSV
         # Scale opt params up to real values before writing values
-        set_scaled_iteration_variable(x, len(x))
+        set_scaled_iteration_variable(x, len(x), self.data)
         if DEBUG_DATAFRAME_OUTPUT:
             data = {
                 "ne": [self.data.physics.nd_plasma_electrons_vol_avg],
@@ -1031,7 +1031,9 @@ class Scipy_SLSQP(_Solver):
 
         if DEBUG_DATAFRAME_OUTPUT:
             # Debugging df including derivatives
-            iteration_variables.set_scaled_iteration_variable(x_current, len(x_current))
+            iteration_variables.set_scaled_iteration_variable(
+                x_current, len(x_current), self.data
+            )
             data = {
                 "te": [self.data.physics.temp_plasma_electron_vol_avg_kev],
                 "ne": [self.data.physics.nd_plasma_electrons_vol_avg],
@@ -1040,7 +1042,7 @@ class Scipy_SLSQP(_Solver):
             if not os.path.exists(SLSQP_OUTPUT_PATH):
                 # Scale to real values, then back again
                 iteration_variables.set_scaled_iteration_variable(
-                    self.x_0, len(self.x_0)
+                    self.x_0, len(self.x_0), self.data
                 )
                 data["te"].insert(0, self.data.physics.temp_plasma_electron_vol_avg_kev)
                 data["ne"].insert(0, self.data.physics.nd_plasma_electrons_vol_avg)
@@ -1087,19 +1089,19 @@ class Scipy_SLSQP(_Solver):
         # result.x is normalised vector; get normalised derivatives
         dx_dt = derivatives(None, result.x, self, optimiser=True)
         # Normalise instead using max values (set from previous solution point)
-        numerics.dx_dt_normed_max = dx_dt / numerics.dx_dt_norm_max
+        self.data.numerics.dx_dt_normed_max = dx_dt / self.data.numerics.dx_dt_norm_max
         # RMSE
-        res = np.sqrt(np.mean(numerics.dx_dt_normed_max**2))
+        res = np.sqrt(np.mean(self.data.numerics.dx_dt_normed_max**2))
         # Record solution vector
         self.x = result.x
         print(colored("No stable solution found, but residual found!", "green"))
         print(f"{dx_dt = }")
-        print(f"{numerics.dx_dt_norm_max = }")
-        print(f"{numerics.dx_dt_normed_max = }")
+        print(f"{self.data.numerics.dx_dt_norm_max = }")
+        print(f"{self.data.numerics.dx_dt_normed_max = }")
         print(f"Residual = {res:.3e}")
         # Set results that will be output in file
-        numerics.derivative_rmse = res
-        numerics.derivatives = dx_dt
+        self.data.numerics.derivative_rmse = res
+        self.data.numerics.derivatives = dx_dt
         # TODO Check/change this return code: need to consider all solution modes
         self.info = -1
         self.objf = res
@@ -1189,7 +1191,7 @@ class Scipy_SLSQP(_Solver):
             # Solver error or model exception
             # Try to solve with equality constraints only
             # (failure, stable solution)
-            numerics.solver_problem_type = 1
+            self.data.numerics.solver_problem_type = 1
             result_eq = None
             try:
                 result_eq = optimize.minimize(
@@ -1201,7 +1203,11 @@ class Scipy_SLSQP(_Solver):
                     constraints=eq_constraints,
                     tol=self.SOLVER_TOL,
                     callback=self.convergence_progress,
-                    options={"disp": True, "eps": numerics.epsfcn, "maxiter": 50},
+                    options={
+                        "disp": True,
+                        "eps": self.data.numerics.epsfcn,
+                        "maxiter": 50,
+                    },
                 )
                 print(
                     colored(
@@ -1220,15 +1226,15 @@ class Scipy_SLSQP(_Solver):
                 # Solver error or model exception
                 # Try to minimise ODE residuals
                 # (failure, unstable solution)
-                numerics.solver_problem_type = 2
+                self.data.numerics.solver_problem_type = 2
                 # Model exceptions here are now not caught
                 # Residual optimisation will raise exception on model exception or
                 # optimiser failure
                 # Set derivative normalisation
                 # TODO DRY
-                numerics.dx_dt_norm_max = np.array([
-                    numerics.dte_dt_max,
-                    numerics.dne_dt_max,
+                self.data.numerics.dx_dt_norm_max = np.array([
+                    self.data.numerics.dte_dt_max,
+                    self.data.numerics.dne_dt_max,
                 ])
 
                 result_ode_res = minimize(
