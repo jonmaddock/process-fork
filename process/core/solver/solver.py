@@ -386,8 +386,9 @@ def derivatives(t, y, self, optimiser=False):
 
         # Need absolute constraint residuals (real values)
         # Constraints 2 and 93 must always be active for a valid solution
-        ppb_idx = np.where(self.data.numerics.icc == 2)
-        fe_idx = np.where(self.data.numerics.icc == 93)
+        # Returns tuple of array, hence double indexing
+        ppb_idx = np.where(self.data.numerics.icc == 2)[0][0]
+        fe_idx = np.where(self.data.numerics.icc == 93)[0][0]
         ppb = self.data.numerics.constraint_residuals[ppb_idx]
         fe = self.data.numerics.constraint_residuals[fe_idx]
 
