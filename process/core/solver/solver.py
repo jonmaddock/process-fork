@@ -385,8 +385,11 @@ def derivatives(t, y, self, optimiser=False):
         # Writes debug df even if models throw exception
 
         # Need absolute constraint residuals (real values)
-        ppb = constraints.constraint_equation_2().constraint_error
-        fe = constraints.constraint_equation_93().constraint_error
+        # Constraints 2 and 93 must always be active for a valid solution
+        ppb_idx = self.data.numerics.icc.index(2)
+        fe_idx = self.data.numerics.icc.index(93)
+        ppb = self.data.numerics.constraint_residuals[ppb_idx]
+        fe = self.data.numerics.constraint_residuals[fe_idx]
 
         ni = self.data.physics.nd_plasma_ions_total_vol_avg
         ne = self.data.physics.nd_plasma_electrons_vol_avg

@@ -178,16 +178,17 @@ class Caller:
 
         # Now idempotent, return
         # Pass model caller and opt params for stability constraint evaluation
-        conf, _, _, _, _ = constraints.constraint_eqns(
+        con_residuals_normalised, _, con_residuals, _, _ = constraints.constraint_eqns(
             m, -1, self.data, self._call_models_once, xc
         )
         # Evaluate constraints and store in numerics during solver iterations:
         # can be used in objective function 20. Hence evaluate before objective
         # calculated
-        self.data.numerics.constraint_values = conf
+        self.data.numerics.constraint_residuals_normalised = con_residuals_normalised
+        self.data.numerics.constraint_residuals = con_residuals
         # Evaluate objective function and constraints
         objf = objective_function(self.data.numerics.minmax, self.data)
-        return objf, conf
+        return objf, con_residuals_normalised
 
     def call_models_and_write_output(self, xc: np.ndarray, ifail: int):
         """Evaluate models until results are idempotent, then write output files.

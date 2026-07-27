@@ -154,7 +154,13 @@ class NumericsData:
     nvar: int = 0
     """number of iteration variables to use"""
 
-    constraint_values: list[float] = None
+    # Constraint residuals, updated on every iteration
+    constraint_residuals_normalised: list[float] = field(
+        default_factory=lambda: np.array([0] * IPEQNS)
+    )
+    constraint_residuals: list[float] = field(
+        default_factory=lambda: np.array([0] * IPEQNS)
+    )
 
     nviter: int = 0
     """number of optimisation iterations performed"""
