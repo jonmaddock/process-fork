@@ -191,10 +191,15 @@ class NumericsData:
     """number of iteration variables to use"""
 
     n_solver_iterations: int = 0
-
-    constraint_values: list[float] = None
-
     """number of optimisation iterations performed"""
+
+    # Constraint residuals, updated on every iteration
+    constraint_residuals_normalised: list[float] = field(
+        default_factory=lambda: np.array([0] * N_CONSTRAINT_EQUATIONS_MAX)
+    )
+    constraint_residuals: list[float] = field(
+        default_factory=lambda: np.array([0] * N_CONSTRAINT_EQUATIONS_MAX)
+    )
 
     icc: list[int] = field(
         default_factory=lambda: np.array([0] * N_CONSTRAINT_EQUATIONS_MAX)
