@@ -1243,7 +1243,7 @@ class Physics(Model):
 
         # Fuel portion - conserve charge neutrality
         # znfuel is the sum of Zi.ni for the three fuel ions
-        self.data.physics.znfuel = (
+        znfuel = (
             self.data.physics.nd_plasma_electrons_vol_avg
             - 2.0 * self.data.physics.nd_plasma_alphas_thermal_vol_avg
             - self.data.physics.nd_plasma_protons_vol_avg
@@ -1251,10 +1251,11 @@ class Physics(Model):
             - self.data.physics.znimp
         )
 
-        # Can occur during solution: catch early instead of becoming a
-        # confusing bootstrap current error
-        if self.data.physics.znfuel < 0.0:
-            raise ValueError("znfuel is negative")
+        # KLUDGE: Prevent znfuel from going negative
+        scaling_factor = 1.0e17
+        znfuel_scaled = znfuel / scaling_factor
+        znfuel_kludged_scaled = znfuel_scaled / (1 - np.exp(-znfuel_scaled))
+        self.data.physics.znfuel = znfuel_kludged_scaled * scaling_factor
 
         # ======================================================================
 
