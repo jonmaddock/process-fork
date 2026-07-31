@@ -919,6 +919,7 @@ class Scipy_SLSQP(_Solver):
     print("Running scipy's SLSQP")
     SOLVER_TOL = 1e-5
     EQ_CONSTRAINT_TOL = 1e-6
+    iteration = 0
 
     def obj_func(self, x):
         objf, conf = self.evaluators.fcnvmc1(self.n, self.m, x, self.ifail)
@@ -948,11 +949,12 @@ class Scipy_SLSQP(_Solver):
         return conf[self.meq : self.m]
 
     def convergence_progress(self, x_current):
+        self.iteration += 1
         obj = self.obj_func(x_current)
         eqs = self.constraint_eq_vec(x_current)
         ineqs = self.constraint_ineq_vec(x_current)
         cons = np.concatenate((eqs, ineqs))
-        print("\nIteration results:")
+        print(f"\nIteration {self.iteration}:")
         print(f"Obj func = {obj}")
         ineqs_rms = np.sqrt(np.mean(np.square(ineqs[ineqs < 0.0])))
         print(f"{ineqs_rms = :.3e}")
@@ -1133,6 +1135,7 @@ class Scipy_SLSQP(_Solver):
             # Try to solve with equality constraints only
             # (failure, stable solution)
             self.data.numerics.solver_problem_type = 1
+            self.iteration = 0
             result_eq = None
             try:
                 result_eq = optimize.minimize(
@@ -1168,6 +1171,7 @@ class Scipy_SLSQP(_Solver):
                 # Try to minimise ODE residuals
                 # (failure, unstable solution)
                 self.data.numerics.solver_problem_type = 2
+                self.iteration = 0
                 # Model exceptions here are now not caught
                 # Residual optimisation will raise exception on model exception or
                 # optimiser failure
