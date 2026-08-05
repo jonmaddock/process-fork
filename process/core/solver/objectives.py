@@ -9,6 +9,9 @@ from process.models.availability import AvailabilityModel
 from process.data_structure import numerics
 
 
+LAMBDA = 1.0
+
+
 def objective_function(i_figure_merit: int, data: DataStructure) -> float:
     """Calculate the specified objective function
 
@@ -44,7 +47,6 @@ def objective_function(i_figure_merit: int, data: DataStructure) -> float:
     ProcessValueError
         If i_figure_merit=15 not used with i_plant_availability=1
     """
-    LAMBDA = 0.1
     try:
         figure_of_merit = FiguresOfMerit(abs(i_figure_merit))
     except ValueError as err:
