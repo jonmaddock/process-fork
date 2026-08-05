@@ -6,6 +6,9 @@ from process.data_structure.numerics import FiguresOfMerit
 from process.data_structure import numerics
 
 
+LAMBDA = 1.0
+
+
 def objective_function(minmax: int, data: DataStructure) -> float:
     """Calculate the specified objective function
 
@@ -36,7 +39,6 @@ def objective_function(minmax: int, data: DataStructure) -> float:
         data structure object for providing data to the
         objective function
     """
-    LAMBDA = 0.1
     try:
         figure_of_merit = FiguresOfMerit(abs(minmax))
     except ValueError as err:
