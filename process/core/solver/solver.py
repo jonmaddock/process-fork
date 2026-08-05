@@ -948,6 +948,71 @@ class Scipy_SLSQP(_Solver):
         logger.info(f"{conf_gt_tol} inequality constraints above 0.0")
         return conf[self.meq : self.m]
 
+    def solve_ineq_and_eq(self, constraints, finite_diff_step):
+        result_eq_ineq = None
+        self.iteration = 0
+        try:
+            result_eq_ineq = optimize.minimize(
+                self.obj_func,
+                self.x_0,
+                method="SLSQP",
+                jac="2-point",
+                bounds=self.bounds,
+                constraints=constraints,
+                callback=self.convergence_progress,
+                options={
+                    "disp": True,
+                    # "eps": self.data.numerics.epsfcn,
+                    "maxiter": 50,
+                    "ftol": self.SOLVER_TOL,
+                    "finite_diff_rel_step": finite_diff_step,
+                },
+            )
+            print(
+                colored(
+                    f"SLSQP eq and ineq cons: no exceptions. SLSQP error code {result_eq_ineq.status}: {result_eq_ineq.message}",
+                    "green",
+                )
+            )
+        except ValueError as e:
+            # Model error, probably caused by diverging parameter vector
+            print(colored(f"SLSQP eq and ineq cons exception. Model error: {e}", "red"))
+
+        return result_eq_ineq
+
+    def solve_eq(self, eq_constraints, finite_diff_step):
+        result_eq = None
+        self.iteration = 0
+        try:
+            result_eq = optimize.minimize(
+                self.obj_func,
+                self.x_0,
+                method="SLSQP",
+                jac="2-point",
+                bounds=self.bounds,
+                constraints=eq_constraints,
+                # tol=self.SOLVER_TOL,
+                callback=self.convergence_progress,
+                options={
+                    "disp": True,
+                    # "eps": self.data.numerics.epsfcn,
+                    "maxiter": 50,
+                    "ftol": self.SOLVER_TOL,
+                    "finite_diff_rel_step": finite_diff_step,
+                },
+            )
+            print(
+                colored(
+                    f"SLSQP eq cons: no exceptions. SLSQP error code {result_eq.status}: {result_eq.message}",
+                    "green",
+                )
+            )
+        except ValueError as e:
+            # Model error, probably caused by diverging parameter vector
+            print(colored(f"SLSQP eq cons exception. Model error: {e}", "red"))
+
+        return result_eq
+
     def convergence_progress(self, x_current):
         self.iteration += 1
         obj = self.obj_func(x_current)
@@ -969,8 +1034,10 @@ class Scipy_SLSQP(_Solver):
         sorted_ineq_con_indexes = ineqs.argsort()
         print("Violated inequality constraints:")
         for i in sorted_ineq_con_indexes:
-            # if ineqs[i] < 0.0:
-            print(f"Constraint {self.data.numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}")
+            if ineqs[i] < 0.0:
+                print(
+                    f"Constraint {self.data.numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}"
+                )
 
         if DEBUG_DATAFRAME_OUTPUT:
             # Debugging df including derivatives
@@ -1083,7 +1150,7 @@ class Scipy_SLSQP(_Solver):
             elif self.x_0[i] > self.bndu[i]:
                 self.x_0[i] = self.bndu[i]
 
-        bounds = optimize.Bounds(lb=self.bndl, ub=self.bndu)
+        self.bounds = optimize.Bounds(lb=self.bndl, ub=self.bndu)
 
         constraints = []
         if self.meq > 0:
@@ -1104,101 +1171,68 @@ class Scipy_SLSQP(_Solver):
 
         # Solve with equality and inequality constraints
         # (stable, safe solution)
+        finite_diff_step = self.data.numerics.epsfcn
         result_eq_ineq = None
-        try:
-            result_eq_ineq = optimize.minimize(
-                self.obj_func,
-                self.x_0,
-                method="SLSQP",
-                jac=None,
-                bounds=bounds,
-                constraints=constraints,
-                tol=self.SOLVER_TOL,
-                callback=self.convergence_progress,
-                options={"disp": True, "eps": self.data.numerics.epsfcn, "maxiter": 50},
-            )
-            print(
-                colored(
-                    f"SLSQP eq and ineq cons: no exceptions. SLSQP error code {result_eq_ineq.status}: {result_eq_ineq.message}",
-                    "green",
-                )
-            )
-        except ValueError as e:
-            # Model error, probably caused by diverging parameter vector
-            print(colored(f"SLSQP eq and ineq cons exception. Model error: {e}", "red"))
+        for h in [finite_diff_step, finite_diff_step * 10, finite_diff_step / 10]:
+            print(f"finite diff step = {h}")
+            result_eq_ineq = self.solve_ineq_and_eq(constraints, h)
 
-        if result_eq_ineq and result_eq_ineq.success:
-            # Eq and ineq con problem converged
-            self.handle_converged_sol(result_eq_ineq)
-        else:
+            if result_eq_ineq and result_eq_ineq.success:
+                # Eq and ineq con problem converged
+                self.handle_converged_sol(result_eq_ineq)
+                break
             # Solver error or model exception
-            # Try to solve with equality constraints only
-            # (failure, stable solution)
-            self.data.numerics.solver_problem_type = 1
+            # Retry with difference finite diff step
+
+        result_eq = None
+        if not (result_eq_ineq and result_eq_ineq.success):
+            for h in [finite_diff_step, finite_diff_step * 10, finite_diff_step / 10]:
+                # Try to solve with equality constraints only
+                # (failure, stable solution)
+                print(f"finite diff step = {h}")
+                self.data.numerics.solver_problem_type = 1
+                result_eq = self.solve_eq(eq_constraints, h)
+                if result_eq and result_eq.success:
+                    # Eq con problem converged
+                    self.handle_converged_sol(result_eq)
+                    break
+
+        if (not (result_eq_ineq and result_eq_ineq.success)) and (
+            not (result_eq and result_eq.success)
+        ):
+            # Both (ineq, eq) and (eq) optimisations have failed
+            # Solver error or model exception
+            # Try to minimise ODE residuals
+            # (failure, unstable solution)
+            self.data.numerics.solver_problem_type = 2
             self.iteration = 0
-            result_eq = None
-            try:
-                result_eq = optimize.minimize(
-                    self.obj_func,
-                    self.x_0,
-                    method="SLSQP",
-                    jac=None,
-                    bounds=bounds,
-                    constraints=eq_constraints,
-                    tol=self.SOLVER_TOL,
-                    callback=self.convergence_progress,
-                    options={
-                        "disp": True,
-                        "eps": self.data.numerics.epsfcn,
-                        "maxiter": 50,
-                    },
-                )
-                print(
-                    colored(
-                        f"SLSQP eq cons: no exceptions. SLSQP error code {result_eq.status}: {result_eq.message}",
-                        "green",
-                    )
-                )
-            except ValueError as e:
-                # Model error, probably caused by diverging parameter vector
-                print(colored(f"SLSQP eq cons exception. Model error: {e}", "red"))
+            # Model exceptions here are now not caught
+            # Residual optimisation will raise exception on model exception or
+            # optimiser failure
+            # Set derivative normalisation
+            # TODO DRY
+            self.data.numerics.dx_dt_norm_max = np.array([
+                self.data.numerics.dte_dt_max,
+                self.data.numerics.dne_dt_max,
+            ])
 
-            if result_eq and result_eq.success:
-                # Eq con problem converged
-                self.handle_converged_sol(result_eq)
+            result_ode_res = minimize(
+                fun=residual,
+                x0=self.x_0,
+                bounds=self.bounds,
+                args=(self,),
+                # jac="3-point",
+            )
+            if result_ode_res and result_ode_res.success:
+                self.handle_residual_sol(result_ode_res)
             else:
-                # Solver error or model exception
-                # Try to minimise ODE residuals
-                # (failure, unstable solution)
-                self.data.numerics.solver_problem_type = 2
-                self.iteration = 0
-                # Model exceptions here are now not caught
-                # Residual optimisation will raise exception on model exception or
-                # optimiser failure
-                # Set derivative normalisation
-                # TODO DRY
-                self.data.numerics.dx_dt_norm_max = np.array([
-                    self.data.numerics.dte_dt_max,
-                    self.data.numerics.dne_dt_max,
-                ])
-
-                result_ode_res = minimize(
-                    fun=residual,
-                    x0=self.x_0,
-                    bounds=bounds,
-                    args=(self,),
-                    # jac="3-point",
-                )
-                if result_ode_res and result_ode_res.success:
-                    self.handle_residual_sol(result_ode_res)
-                else:
-                    # No model exception, but residual optimiser failed
-                    raise Exception(
-                        colored(
-                            f"Residual optimiser failed: {result_ode_res.message}",
-                            "red",
-                        )
+                # No model exception, but residual optimiser failed
+                raise Exception(
+                    colored(
+                        f"Residual optimiser failed: {result_ode_res.message}",
+                        "red",
                     )
+                )
 
         end_time = time.time()
         duration = end_time - start_time
