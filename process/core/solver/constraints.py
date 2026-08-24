@@ -293,13 +293,9 @@ def constraint_equation_2(constraint_registration, data):
         data.physics.pden_electron_transport_loss_mw
         + data.physics.pden_ion_transport_loss_mw
     )
-    # Total power lost is scaling power plus radiation:
-    if data.physics.i_rad_loss == 0:
-        pnumerator = pscaling + data.physics.pden_plasma_rad_mw
-    elif data.physics.i_rad_loss == 1:
-        pnumerator = pscaling + data.physics.pden_plasma_core_rad_mw
-    else:
-        pnumerator = pscaling
+    # Total power lost is scaling power plus radiation
+    # Always use full radiation (core + edge) in plasma power balance
+    pnumerator = pscaling + data.physics.pden_plasma_rad_mw
 
     # if plasma not ignited include injected power
     if (

@@ -24,6 +24,7 @@ class RadpwrData:
     pden_plasma_core_rad_mw: float
     pden_plasma_outer_rad_mw: float
     pden_plasma_rad_mw: float
+    pden_plasma_core_rad_tau_energy_mw: float
 
 
 def calculate_radiation_powers(
@@ -125,6 +126,9 @@ def calculate_radiation_powers(
     pden_plasma_core_rad_mw = (
         imp_rad.pden_impurity_core_rad_total_mw + pden_plasma_sync_mw
     )
+    pden_plasma_core_rad_tau_energy_mw = (
+        imp_rad.pden_impurity_core_rad_total_tauE_mw + pden_plasma_sync_mw
+    )
 
     # Total radiation power/volume.
     pden_plasma_rad_mw = imp_rad.pden_impurity_rad_total_mw + pden_plasma_sync_mw
@@ -134,6 +138,7 @@ def calculate_radiation_powers(
         pden_plasma_core_rad_mw,
         pden_plasma_outer_rad_mw,
         pden_plasma_rad_mw,
+        pden_plasma_core_rad_tau_energy_mw,
     )
 
 
