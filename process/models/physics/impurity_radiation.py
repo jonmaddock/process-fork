@@ -17,9 +17,6 @@ from process.models.physics.plasma_profiles import PlasmaProfile
 
 logger = logging.getLogger(__name__)
 
-int_edge_rad = False
-rho_fix = False
-
 
 def initialise_imprad(data: DataStructure):
     """Initialises the impurity radiation data structure
@@ -560,11 +557,6 @@ def element2index(element: str, data: DataStructure):
         ) from e
 
 
-global pden_impurity_rad_profile
-global pden_impurity_core_rad_profile
-global pden_impurity_rad_edge_profile
-
-
 class ImpurityRadiation:
     """Calculates the impurity radiation losses for given temperature and
     density profiles. The considers the  total impurity radiation from the core
@@ -648,85 +640,43 @@ class ImpurityRadiation:
             self.pimp_profile * self.plasma_profile.neprofile.profile_x
         )
 
-        if int_edge_rad:
-            # Core region radiation profile
-            fradcore_profile = fradcore(
-                self.plasma_profile.neprofile.profile_x,
-                self.data.impurity_radiation.radius_plasma_core_norm,
-                self.data.impurity_radiation.f_p_plasma_core_rad_reduction,
-            )
+        # Core region radiation profile
+        fradcore_profile = fradcore(
+            self.plasma_profile.neprofile.profile_x,
+            self.data.impurity_radiation.radius_plasma_core_norm,
+            self.data.impurity_radiation.f_p_plasma_core_rad_reduction,
+        )
 
-            pden_impurity_core_rad_total = (
-                self.pimp_profile
-                * self.plasma_profile.neprofile.profile_x
-                * fradcore_profile
-            )
+        pden_impurity_core_rad_total = (
+            self.pimp_profile
+            * self.plasma_profile.neprofile.profile_x
+            * fradcore_profile
+        )
 
-            # Edge region radiation profile
-            fradedge_profile = np.zeros_like(self.plasma_profile.neprofile.profile_x)
-            edge_mask = (
-                self.plasma_profile.neprofile.profile_x
-                >= self.data.impurity_radiation.radius_plasma_core_norm
-            )
-            fradedge_profile[edge_mask] = 1.0  # Edge region gets full value
-            pden_impurity_rad_edge_total = self.pimp_profile * fradedge_profile
+        # Edge region radiation profile
+        fradedge_profile = np.zeros_like(self.plasma_profile.neprofile.profile_x)
+        edge_mask = (
+            self.plasma_profile.neprofile.profile_x
+            >= self.data.impurity_radiation.radius_plasma_core_norm
+        )
+        fradedge_profile[edge_mask] = 1.0  # Edge region gets full value
+        pden_impurity_rad_edge_total = self.pimp_profile * fradedge_profile
 
-            # Total radiation profile (core + edge)
-            pden_impurity_rad_total = (
-                pden_impurity_core_rad_total + pden_impurity_rad_edge_total
-            )
+        # Total radiation profile (core + edge)
+        pden_impurity_rad_total = (
+            pden_impurity_core_rad_total + pden_impurity_rad_edge_total
+        )
 
-            self.pden_impurity_rad_profile = np.add(
-                self.pden_impurity_rad_profile, pden_impurity_rad_total
-            )
-            self.pden_impurity_core_rad_profile = np.add(
-                self.pden_impurity_core_rad_profile, pden_impurity_core_rad_total
-            )
+        self.pden_impurity_rad_profile = np.add(
+            self.pden_impurity_rad_profile, pden_impurity_rad_total
+        )
+        self.pden_impurity_core_rad_profile = np.add(
+            self.pden_impurity_core_rad_profile, pden_impurity_core_rad_total
+        )
 
-            self.pden_impurity_rad_edge_profile = np.add(
-                self.pden_impurity_rad_edge_profile, pden_impurity_rad_edge_total
-            )
-        else:
-            # Old case
-            if rho_fix:
-                pden_impurity_rad_total = self.pimp_profile
-                pden_impurity_core_rad_total = self.pimp_profile * (
-                    # Nasty!
-                    # self.plasma_profile.neprofile.profile_x
-                    fradcore(
-                        self.plasma_profile.neprofile.profile_x,
-                        self.data.impurity_radiation.radius_plasma_core_norm,
-                        self.data.impurity_radiation.f_p_plasma_core_rad_reduction,
-                    )
-                )
-            else:
-                # Is this wrongly multiplying by rho too? Looks like it
-                pden_impurity_rad_total = (
-                    self.pimp_profile * self.plasma_profile.neprofile.profile_x
-                )
-                pden_impurity_core_rad_total = self.pimp_profile * (
-                    self.plasma_profile.neprofile.profile_x
-                    * fradcore(
-                        self.plasma_profile.neprofile.profile_x,
-                        self.data.impurity_radiation.radius_plasma_core_norm,
-                        self.data.impurity_radiation.f_p_plasma_core_rad_reduction,
-                    )
-                )
-
-            self.pden_impurity_rad_profile = np.add(
-                self.pden_impurity_rad_profile, pden_impurity_rad_total
-            )
-            self.pden_impurity_core_rad_profile = np.add(
-                self.pden_impurity_core_rad_profile, pden_impurity_core_rad_total
-            )
-
-        global pden_impurity_rad_profile
-        global pden_impurity_core_rad_profile
-        global pden_impurity_rad_edge_profile
-
-        pden_impurity_rad_profile = self.pden_impurity_rad_profile
-        pden_impurity_core_rad_profile = self.pden_impurity_core_rad_profile
-        pden_impurity_rad_edge_profile = self.pden_impurity_rad_edge_profile
+        self.pden_impurity_rad_edge_profile = np.add(
+            self.pden_impurity_rad_edge_profile, pden_impurity_rad_edge_total
+        )
 
     def integrate_radiation_loss_profiles(self):
         """Integrate the radiation loss profiles using the Simpson rule.
@@ -735,20 +685,23 @@ class ImpurityRadiation:
         # 2.0e-6 converts from W/m^3 to MW/m^3 and also accounts for both sides of the
         # plasma
         self.pden_impurity_rad_total_mw = 2.0e-6 * integrate.simpson(
-            self.pden_impurity_rad_profile,
+            self.pden_impurity_rad_profile * self.plasma_profile.neprofile.profile_x,
             x=self.plasma_profile.neprofile.profile_x,
             dx=self.plasma_profile.neprofile.profile_dx,
         )
         self.pden_impurity_core_rad_total_mw = 2.0e-6 * integrate.simpson(
-            self.pden_impurity_core_rad_profile,
+            self.pden_impurity_core_rad_profile
+            * self.plasma_profile.neprofile.profile_x,
             x=self.plasma_profile.neprofile.profile_x,
             dx=self.plasma_profile.neprofile.profile_dx,
         )
 
-        if int_edge_rad:
-            self.pden_impurity_rad_edge_total_mw = 2.0e-6 * integrate.simpson(
-                self.pden_impurity_rad_edge_profile, x=self.rho, dx=self.rhodx
-            )
+        self.pden_impurity_rad_edge_total_mw = 2.0e-6 * integrate.simpson(
+            self.pden_impurity_rad_edge_profile
+            * self.plasma_profile.neprofile.profile_x,
+            x=self.plasma_profile.neprofile.profile_x,
+            dx=self.plasma_profile.neprofile.profile_dx,
+        )
 
     def calculate_imprad(self):
         """Call the map function to calculate impurity radiation parameters for each
