@@ -166,9 +166,14 @@ class PlasmaConfinementTime(Model):
         try:
             model = ConfinementRadiationLossModel(int(self.data.physics.i_rad_loss))
 
+            # Always use full radiation model in PPB, but reduced radiation
+            # can be used here in confinement time calculation using i_rad_loss
+            # pden_plasma_core_rad_mw is already reduced here, but if full radiation, not used!
             if model == ConfinementRadiationLossModel.FULL_RADIATION:
+                # Not reduced rad
                 p_plasma_loss_mw -= self.data.physics.pden_plasma_rad_mw * vol_plasma
             elif model == ConfinementRadiationLossModel.CORE_ONLY:
+                # Use reduced rad
                 p_plasma_loss_mw -= pden_plasma_core_rad_mw * vol_plasma
             # NO_RADIATION: do not adjust p_plasma_loss_mw for radiation
         except ValueError as e:
