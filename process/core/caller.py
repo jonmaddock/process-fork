@@ -190,7 +190,7 @@ class Caller:
         self.data.numerics.constraint_residuals_normalised = con_residuals_normalised
         self.data.numerics.constraint_residuals = con_residuals
         # Evaluate objective function and constraints
-        objf = objective_function(self.data.numerics.minmax, self.data)
+        objf = objective_function(self.data.numerics.i_process_run_mode, self.data)
         return objf, con_residuals_normalised
 
     def call_models_and_write_output(self, xc: np.ndarray, ifail: int):
