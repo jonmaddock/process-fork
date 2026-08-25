@@ -427,7 +427,7 @@ def calc_zimp(self):
     for imp in range(N_IMPURITIES):
         if self.data.impurity_radiation.impurity_arr_z[imp] > 2:
             zimp += (
-                impurity_radiation.zav_of_te(
+                impurity_radiation.calculate_average_charge_at_temp(
                     imp,
                     np.array([self.data.physics.temp_plasma_electron_vol_avg_kev]),
                     self.data,
