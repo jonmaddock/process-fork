@@ -1089,18 +1089,47 @@ class Scipy_SLSQP(_Solver):
 
         # Print constraints sorted by value (most negative (most violated) first)
         sorted_eq_con_indexes = eqs.argsort()
-        print("Equality constraints:")
+        print("\nEquality constraints:")
         for i in sorted_eq_con_indexes:
             # Equality constraints first in icc
             print(f"Constraint {self.data.numerics.icc[i]} = {eqs[i]:.3e}")
 
         sorted_ineq_con_indexes = ineqs.argsort()
-        print("Violated inequality constraints:")
+        print("\nViolated inequality constraints:")
         for i in sorted_ineq_con_indexes:
             if ineqs[i] < 0.0:
                 print(
                     f"Constraint {self.data.numerics.icc[len(eqs) + i]} = {ineqs[i]:.3e}"
                 )
+
+        # Print range-normalised optimisation parameters
+        range_norm_opt_params = {}
+        for i in range(self.data.numerics.n_iteration_variables):
+            if self.data.numerics.boundu[i] == self.data.numerics.boundl[i]:
+                xnorm = 1.0
+            else:
+                xnorm = min(
+                    max(
+                        (x_current[i] - self.data.numerics.itv_scaled_lower_bounds[i])
+                        / (
+                            self.data.numerics.itv_scaled_upper_bounds[i]
+                            - self.data.numerics.itv_scaled_lower_bounds[i]
+                        ),
+                        0.0,
+                    ),
+                    1.0,
+                )
+            number = self.data.numerics.ixc[i]
+            range_norm_opt_params[number] = xnorm
+
+        sorted_range_norm_opt_params = {
+            k: v
+            for k, v in sorted(range_norm_opt_params.items(), key=lambda item: item[1])
+        }
+        print("\nRange-normalised opt params:")
+        for k, v in sorted_range_norm_opt_params.items():
+            name = self.data.numerics.lablxc[k - 1]
+            print(f"{v:.3e}: {k}, {name}")
 
         if DEBUG_DATAFRAME_OUTPUT:
             # Debugging df including derivatives
