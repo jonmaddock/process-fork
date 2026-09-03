@@ -710,22 +710,10 @@ class ImpurityRadiation:
         radiation  (pden_impurity_rad_total_mw). Update the stored arrays with the
         values.
         """
-        pden_impurity_rad_total = (
-            self.pden_impurity_radiation_profile
-            * self.plasma_profile.neprofile.profile_x
-        )
-        fradcore_profile = create_f_rad_core_profile(
-            rho=self.plasma_profile.neprofile.profile_x,
-            radius_plasma_core_norm=self.data.impurity_radiation.radius_plasma_core_norm,
-            f_p_plasma_core_rad_reduction=self.data.impurity_radiation.f_p_plasma_core_rad_reduction,
-        )
-
-        pden_impurity_core_rad_total = self.pden_impurity_radiation_profile * (
-            self.plasma_profile.neprofile.profile_x * fradcore_profile
-        )
+        pden_impurity_rad_total = self.pden_impurity_radiation_profile
 
         # Core region radiation profile
-        pden_impurity_core_rad_total = self.pden_impurity_radiation_profile * (
+        pden_impurity_core_rad_total = pden_impurity_rad_total * (
             create_f_rad_core_profile(
                 rho=self.plasma_profile.neprofile.profile_x,
                 radius_plasma_core_norm=self.data.impurity_radiation.radius_plasma_core_norm,
@@ -733,7 +721,7 @@ class ImpurityRadiation:
             )
         )
         # Reduce core radiation for tauE calculation only
-        pden_impurity_core_rad_total_tauE = self.pden_impurity_radiation_profile * (
+        pden_impurity_core_rad_total_tauE = pden_impurity_rad_total * (
             create_f_rad_core_profile(
                 rho=self.plasma_profile.neprofile.profile_x,
                 radius_plasma_core_norm=self.data.impurity_radiation.radius_plasma_core_norm,
@@ -748,9 +736,7 @@ class ImpurityRadiation:
             >= self.data.impurity_radiation.radius_plasma_core_norm
         )
         fradedge_profile[edge_mask] = 1.0  # Edge region gets full value
-        pden_impurity_rad_edge_total = (
-            self.pden_impurity_radiation_profile * fradedge_profile
-        )
+        pden_impurity_rad_edge_total = pden_impurity_rad_total * fradedge_profile
 
         # Total radiation profile (core + edge)
         pden_impurity_rad_total = (
