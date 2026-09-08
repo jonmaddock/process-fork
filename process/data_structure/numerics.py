@@ -605,13 +605,13 @@ class NumericsData:
 
     name_xc: list[str] = field(default_factory=lambda: [""] * N_ITERATION_VARIABLES_MAX)
     derivative_rmse: float = 0.0
-    derivatives = np.array([0.0, 0.0])
+    derivatives: list[str] = field(default_factory=lambda: np.array([0.0, 0.0]))
     ppb_loss_max: float = 0.0
     fe_loss_max: float = 0.0
     dte_dt_max: float = 0.0
     dne_dt_max: float = 0.0
-    dx_dt_norm_max = np.ones(2)
-    dx_dt_normed_max = np.zeros(2)
+    dx_dt_norm_max: list[str] = field(default_factory=lambda: np.ones(2))
+    dx_dt_normed_max: list[str] = field(default_factory=lambda: np.zeros(2))
     solver_problem_type: int = 0
 
     sqsumsq: float = 0.0
