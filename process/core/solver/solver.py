@@ -1051,7 +1051,7 @@ class Scipy_SLSQP(_Solver):
                 self.obj_func,
                 self.x_0,
                 method="SLSQP",
-                jac="2-point",
+                jac="3-point",
                 bounds=self.bounds,
                 constraints=eq_constraints,
                 # tol=self.SOLVER_TOL,
