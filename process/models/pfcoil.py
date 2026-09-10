@@ -3670,8 +3670,13 @@ class CSCoil(Model):
             self.data.pf_coil.j_cs_critical_pulse_start = (
                 self.data.pf_coil.j_pf_wp_critical[self.data.pf_coil.n_cs_pf_coils - 1]
             )
-
-            self.data.pf_coil.temp_cs_superconductor_margin = min(tmarg1, tmarg2)
+            # tmarg can be negative (i.e. quenched): not a problem, but model behaviour
+            # poor (perhaps stiff) in this region when Newton solver fails in superconpf
+            # and fallback used. Solver can't escape, so use softplus kludge to enforce
+            # tmarg_min > 0
+            tmarg_min = min(tmarg1, tmarg2)
+            tmarg_min_kludged = np.log(1 + np.exp(tmarg_min))
+            self.data.pf_coil.temp_cs_superconductor_margin = tmarg_min_kludged
 
         else:
             # Resistive power losses (non-superconducting coil)
