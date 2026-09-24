@@ -544,7 +544,7 @@ def residual(x, self):
             float_format="%.9e",
         )
     # Scale residual up (usually very small) for typical objective ~= 1.0
-    return res * 1.0e6
+    return res * 1.0e5
 
 
 class SolveIVP(_Solver):
@@ -1323,24 +1323,27 @@ class Scipy_SLSQP(_Solver):
                 self.data.numerics.dne_dt_max,
             ])
 
-            result_ode_res = optimize.minimize(
-                residual,
-                self.x_0,
-                args=(self,),
-                method="SLSQP",
-                jac="3-point",
-                bounds=self.bounds,
-                constraints=ineq_constraint_30,
-                options={
-                    "disp": True,
-                    "maxiter": 100,
-                    "ftol": self.SOLVER_TOL,
-                    "finite_diff_rel_step": finite_diff_step,
-                },
-            )
-            if result_ode_res and result_ode_res.success:
-                self.handle_residual_sol(result_ode_res)
-            else:
+            for h in [finite_diff_step, finite_diff_step * 10, finite_diff_step / 10]:
+                result_ode_res = optimize.minimize(
+                    residual,
+                    self.x_0,
+                    args=(self,),
+                    method="SLSQP",
+                    jac="3-point",
+                    bounds=self.bounds,
+                    constraints=ineq_constraint_30,
+                    options={
+                        "disp": True,
+                        "maxiter": 100,
+                        "ftol": self.SOLVER_TOL,
+                        "finite_diff_rel_step": h,
+                    },
+                )
+                if result_ode_res and result_ode_res.success:
+                    self.handle_residual_sol(result_ode_res)
+                    break
+
+            if not (result_ode_res and result_ode_res.success):
                 # No model exception, but residual optimiser failed
                 raise Exception(
                     colored(
