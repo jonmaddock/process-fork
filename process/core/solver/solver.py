@@ -1011,6 +1011,12 @@ class Scipy_SLSQP(_Solver):
         logger.info(f"{conf_gt_tol} inequality constraints above 0.0")
         return conf[self.meq : self.m]
 
+    def constraint_ineq_30(self, x):
+        # Just return con30 (Pinj upper limit)
+        con30_idx = np.where(self.data.numerics.icc == 30)
+        objf, conf = self.evaluators.fcnvmc1(self.n, self.m, x, self.ifail)
+        return conf[con30_idx]
+
     def solve_ineq_and_eq(self, constraints, finite_diff_step):
         result_eq_ineq = None
         self.iteration = 0
@@ -1258,6 +1264,14 @@ class Scipy_SLSQP(_Solver):
                 np.inf,
             )
             constraints.append(ineq_constraints)
+            # Find P_inj constraint: required in otherwise "eq-only" problem
+            # to avoid extreme (impossible) P_inj values
+            # Find con 30 in list of constraints: order same as value array
+            ineq_constraint_30 = optimize.NonlinearConstraint(
+                self.constraint_ineq_30,
+                0.0,
+                np.inf,
+            )
 
         start_time = time.time()
 
@@ -1283,7 +1297,7 @@ class Scipy_SLSQP(_Solver):
                 # (failure, stable solution)
                 print(f"finite diff step = {h}")
                 self.data.numerics.solver_problem_type = 1
-                result_eq = self.solve_eq(eq_constraints, h)
+                result_eq = self.solve_eq([eq_constraints, ineq_constraint_30], h)
                 if result_eq and result_eq.success:
                     # Eq con problem converged
                     self.handle_converged_sol(result_eq)
